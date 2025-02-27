@@ -63,7 +63,7 @@ tpc.c$fw<- as.numeric(tpc.c$fw)
 
 #Calculate mass gained in each time treatment
 tpc.c$mgain= tpc.c$fw - tpc.c$M0
-#check big negative and positive values
+#FIX: check big negative and positive values
 
 # Paste date in t.in and t.out column to make duration calculation easier
 tpc.c$t.in <- paste(tpc.c$Date, tpc.c$t.in, sep = " ")
@@ -105,7 +105,7 @@ tpc.cs= tpc.c[,c("UniID","mom","ID","temp", "active","instar","time","duration",
 tpc.ps$mom <- as.character(tpc.ps$mom)
 
 # Combine past and current datasets while preserving time.per
-tpc <- rbind(tpc.cs, tpc.ps) # code not working here - fix
+tpc <- rbind(tpc.cs, tpc.ps) 
 
 # Save data frame to new Csv
 #write.csv(tpc, "PastPresentFilteredConstantTpc2024.csv")
@@ -197,4 +197,11 @@ rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=f
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point() + geom_line()+
   facet_grid(instar ~ .) 
+
+#initial weights
+plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
+  geom_density(aes(fill=time.per), alpha=0.5)+
+  ylab("Density") +xlab("mass (mg)")+
+  facet_wrap(.~instar)+
+  scale_color_viridis_d()+scale_fill_viridis_d(alpha=0.5)
 #==========================
