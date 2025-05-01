@@ -115,12 +115,6 @@ tpc <- rbind(tpc.cs, tpc.ps)
 tpc$active[which(tpc$active %in% c("yes","y?"))]<- "y"
 tpc$active[which(tpc$active %in% c("no","n?"))]<- "n"
 
-# Save data frame to new Csv
-if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
-if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
-
-write.csv(tpc, "PastPresentFilteredConstantTpc2024.csv")
-
 #==========================
 #analysis
 # Filter caterpillars to include the ones who were active
@@ -140,19 +134,25 @@ tpc$rgrlog= (log10(tpc$fw*0.001)-log10(tpc$Mo*0.001))/tpc$time
 # calculate relative growth rate using arithmetic scale 
 #tpc$rgrarith = (tpc$fw/tpc$Mo) / tpc$time 
 
+# Save data frame to new Csv
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
+
+write.csv(tpc, "PastPresentFilteredConstantTpc2024.csv")
+
 #--------
 #check time dependence of feeding
 tpc1<- tpc[which(tpc$time.per=="past"),]
 
 #restrict to potential time limits
-mod= lm(rgrlog ~ temp*time, data= tpc1[which(tpc1$time>5 & tpc1$time<10 ),]) 
-mod= lm(rgrlog ~ temp*time, data= tpc1[which(tpc1$time>21 & tpc1$time<26),]) 
+mod= lm(rgrlog ~ Mo + temp*time, data= tpc1[which(tpc1$time>5 & tpc1$time<10 ),]) 
+mod= lm(rgrlog ~ Mo + temp*time, data= tpc1[which(tpc1$time>21 & tpc1$time<26),]) 
 anova(mod)
 
 plot_model(mod, type = "pred", terms = c("time", "temp"), show.data=TRUE)
 
-mod.lmer <- lme(rgrlog ~ temp*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
-mod.lmer <- lme(rgrlog ~ temp*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
+mod.lmer <- lme(rgrlog ~ Mo + temp*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
+mod.lmer <- lme(rgrlog ~ Mo + temp*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
 anova(mod.lmer)
 
 plot_model(mod.lmer, type = "pred", terms = c("time", "temp"), show.data=TRUE)
