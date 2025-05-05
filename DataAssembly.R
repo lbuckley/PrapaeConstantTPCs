@@ -14,9 +14,14 @@ library(lubridate)
 library(nlme)
 library(lme4)
 library(sjPlot)
+library(car)
+
+colm<- viridis_pal(option = "mako")(8)
+cols<- colm[c(2,4,7)]
+cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
@@ -134,107 +139,11 @@ tpc$rgrlog= (log10(tpc$fw*0.001)-log10(tpc$Mo*0.001))/tpc$time
 # calculate relative growth rate using arithmetic scale 
 #tpc$rgrarith = (tpc$fw/tpc$Mo) / tpc$time 
 
+#growth rate
+tpc$gr= tpc$mgain/tpc$time 
+
 # Save data frame to new Csv
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
 
 write.csv(tpc, "PastPresentFilteredConstantTpc2024.csv")
-
-#--------
-#check time dependence of feeding
-tpc1<- tpc[which(tpc$time.per=="past"),]
-
-#restrict to potential time limits
-mod= lm(rgrlog ~ Mo + temp*time, data= tpc1[which(tpc1$time>5 & tpc1$time<10 ),]) 
-mod= lm(rgrlog ~ Mo + temp*time, data= tpc1[which(tpc1$time>21 & tpc1$time<26),]) 
-anova(mod)
-
-plot_model(mod, type = "pred", terms = c("time", "temp"), show.data=TRUE)
-
-mod.lmer <- lme(rgrlog ~ Mo + temp*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
-mod.lmer <- lme(rgrlog ~ Mo + temp*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
-anova(mod.lmer)
-
-plot_model(mod.lmer, type = "pred", terms = c("time", "temp"), show.data=TRUE)
-
-#-----
-#set up 6 and 24 hr studies
-tpc$time.class<- NA
-#expand windows
-tpc$time.class[which(tpc$time>5 & tpc$time<10)]<-6
-tpc$time.class[which(tpc$time>21 & tpc$time<26)]<-24
-
-#---------------------
-#PLOT
-
-#plot feeding rate over time to assess time adjustments
-tpc.plot <- tpc[which(tpc$time>0),]
-tpc.plot$mass.r<- log10(tpc.plot$fw/tpc.plot$Mo)
-
-ggplot(tpc.plot, aes(x = time, y = mass.r, color = time.per)) + #y = mgain
-  geom_point(alpha=0.4, position = position_jitterdodge()) +
-  facet_grid(temp ~ instar) +xlim(0,40)
-
-ggplot(tpc.plot, aes(x = time, y = rgrlog, color = time.per)) + #y = mgain
-  geom_point(alpha=0.4, position = position_jitterdodge()) +
-  facet_grid(temp ~ instar) +xlim(0,40)
-
-#plot temperature sensitivity
-tpc.plot <- tpc[which(!is.na(tpc$time.class)),]
-
-rgr.plot <- ggplot(tpc.plot, aes( x = temp, y = rgrlog, color = time.per)) +
-  geom_point(alpha=0.4, position = position_jitterdodge()) +
-  facet_grid(time.class ~ instar) 
-
-#---
-#plot family mean
-tpc.agg <- tpc.plot %>%
-  group_by(temp, time.per, time.class, instar) %>% 
-  dplyr::summarise(
-    mean = mean(rgrlog, na.rm = TRUE),
-    n= length(rgrlog),
-    sd = sd(rgrlog, na.rm = TRUE) )
-tpc.agg$se= tpc.agg$sd / sqrt(tpc.agg$n)
-
-#plotting family means with error bars
-rgr.plot= rgr.plot + 
-  geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
-  geom_point(data=tpc.agg, aes(x=temp, y = mean, fill=time.per), size=2, col="black", pch=21)+
-  geom_line(data=tpc.agg, aes(x=temp, y = mean))+
-  theme_bw()+xlab("Temperature (C)")+ylab("RGR (g/g/h)")
-
-  ---
-  #plot family mean values
-  tpc.agg.f <- tpc.plot %>%
-  group_by(temp, time.per, time.class, instar, mom) %>% 
-  dplyr::summarise(
-    mean = mean(rgrlog, na.rm = TRUE),
-    n= length(rgrlog),
-    se = sd(rgrlog, na.rm = TRUE) / sqrt(n)
-  )
-  
-#add family lines
-#not individuals at every temp
-#rgr.plot= rgr.plot +
-#geom_line(data=tpc.agg.f, aes(x=temp, y = mean, group=mom), linewidth=1)
-
-#-------
-#plot 4th and 5th together
-rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(instar))) +
-  geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
-  geom_point() + geom_line()+
-  facet_grid(time.class ~ .) 
-
-#plot time periods together
-rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(time.class))) +
-  geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
-  geom_point() + geom_line()+
-  facet_grid(instar ~ .) 
-
-#initial weights
-plot.mass<- ggplot(tpc, aes(x=log10(Mo),color=time.per, group=time.per)) + 
-  geom_density(aes(fill=time.per), alpha=0.5)+
-  ylab("Density") +xlab("mass (mg)")+
-  facet_wrap(.~instar)+
-  scale_color_viridis_d()+scale_fill_viridis_d(alpha=0.5)
-#==========================
