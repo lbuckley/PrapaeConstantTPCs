@@ -1,6 +1,4 @@
-# Taylor M. Hatcher, https://github.com/taylorhatcher/WARP2024/blob/main/24hrTPCConstantAnalysis.R
-# 24 Hr Constant TPC Analysis for P.rapae
-# This analysis compares historical constant feeding relative growth rates at 6hr and 24hr at a constant temperature
+#Past feeding and temp data
 
 # Load required libraries 
 library(ggplot2)
@@ -16,19 +14,21 @@ library(lme4)
 library(sjPlot)
 library(car)
 library(ggridges)
+library(zoo)
+library(TrenchR)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 # Load data
-if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
-if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
 
-tpc<- read.csv("PastPresentFilteredConstantTpc2024.csv")
+tpc<- read.csv("out/PastPresentFilteredConstantTpc2024.csv")
 
 #==========================
 #INITIAL DATA
@@ -78,9 +78,10 @@ Fig1_time.plot<- ggplot(tpc.agg, aes(x = temp, y = mean, color = time.class)) +
   geom_point() + geom_line()+
   geom_errorbar(aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   facet_grid(. ~ in.lab) +
-  theme_bw(base_size=16) +theme(legend.position = "bottom")+
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
   xlab("Temperature (°C)")+ylab("Growth rate (g/g/hr)")+
-  labs(color="Time (hr)")+scale_color_viridis_d()
+  labs(color="Time (hr)")+scale_color_viridis_d()+
+  xlim(11,41)
 
 #model
 mod= lm(rgrlog ~ Mo + poly(temp)*time.class*instar, data= tpc1) 
@@ -107,7 +108,6 @@ anova(mod)
 
 #OPERATIVE TEMPS
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
 if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
 
@@ -116,38 +116,82 @@ tdat<- read.csv("./data/PrapaeGardenTemps_WARP.csv")
 #drop 2024 air temperature
 tdat<- tdat[-which(tdat$T=="Logger3.T4.shadedT"),]
 
+#doy
+tdat$doy= floor(tdat$dt)
+
 #average across sensors
 tdat.mean <- tdat %>%
-  group_by(dt, Date, Time, Year) %>%
+  group_by(dt, Date, Time, Year, hr, doy) %>%
   summarise(Tmean = mean(value, na.rm = TRUE), n=length(value))
 
-#running average across time periods
-#1,2,6,12, 24 hr 
-#ggrides
+#hourly max, min
+tdat.mean.hr <- tdat.mean %>%
+  group_by(Date, hr, Year, doy) %>%
+  summarise(Tmin = min(Tmean, na.rm = TRUE), Tmax = max(Tmean, na.rm = TRUE), Tmean = mean(Tmean, na.rm = TRUE), n=length(Tmean), .groups = 'drop')
+
+#check dates
+#c(unique(tdat.mean.hr[which(tdat.mean.hr$Year==2023),"doy"]))
+#1997: 224-238
+#1999: 209-217, 227-237
+#2023: 190-202, 212-226
+#2024: 173-240
+
+#restrict to overlapping time periods 227-237
+tdat<- tdat.mean.hr[which(tdat.mean.hr$doy %in% c(227:237)), ]
+#just 199 and 2024
+tdat<- tdat[which(tdat$Year %in% c(1999,2024)), ]
+
+#order by time
+tdat<- tdat[order(tdat$Year, tdat$doy, tdat$hr), ]
 
 #-----
-#plot distributions for overlapping data, #1997: 224-238; 1999: 227:237
-Tdist.plot <- ggplot(tdat.mean[which(tdat.mean$dt>223 & tdat.mean$dt<238),], aes(x=Tmean, color=factor(Year), fill=factor(Year), group=factor(Year))) +  geom_density(alpha=0.5)+
-  scale_fill_viridis_d() +scale_color_viridis_d()+
-  theme_classic(base_size = 18)+
-  labs(x = "Temperature (°C)", color = "Year", fill="Year") 
+#running average across time periods
 
-#restrict to daylight 223 238 Aug 11-26; Aug 11: 6,8:30; Aug 26: 6:20-8
-#tdat.mean$dec.dt<- tdat.mean$dt - floor(tdat.mean$dt)
-#tdat.day<- tdat.mean[which(tdat.mean$dec.dt>0.25 & tdat.mean$dec.dt<0.85),]
-#tdat.day<- tdat.day[which(tdat.day$dt>223 & tdat.day$dt<238),]
+# Calculate running averages for different time windows
+tave <- tdat %>%
+  # Calculate rolling means for different windows
+  mutate(
+    # 2-hour rolling average
+    t2h = rollmean(Tmean, k = 2, fill = NA, align = "right"),
+    # 6-hour rolling average
+    t6h = rollmean(Tmean, k = 6, fill = NA, align = "right"),
+    # 12-hour rolling average
+    t12h = rollmean(Tmean, k = 12, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t24h = rollmean(Tmean, k = 24, fill = NA, align = "right"),
+    # 12-hour rolling average
+    t54h = rollmean(Tmean, k = 54, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t80h = rollmean(Tmean, k = 80, fill = NA, align = "right")
+  )
 
-Tdist.day.plot <- ggplot(tdat.mean, aes(x=Tmean, color=factor(Year), fill=factor(Year), group=factor(Year))) +  geom_density(alpha=0.5)+
-  scale_fill_viridis_d() +scale_color_viridis_d()+
-  theme_classic(base_size = 18)+ xlim(0,40)+
-  labs(title="doy 223-238, daytime" , x = "Temperature (°C)", color = "Year", fill="Year") 
-#hourly max, min
-tdat.mean.hr <- tdat %>%
-  group_by(Date, hr, Year) %>%
-  summarise(Tmin = min(value, na.rm = TRUE), Tmax = max(value, na.rm = TRUE), Tmean = mean(value, na.rm = TRUE), n=length(value), .groups = 'drop')
+#to long format
+tave<- na.omit(melt(tave[,c("hr","Year","doy","t2h","t6h", "t12h","t24h","t54h","t80h")], id.vars=c("hr","Year","doy")))
 
-Tdist.hr.plot <- ggplot(tdat.mean.hr, aes(x=Tmax, color=factor(Year), fill=factor(Year), group=factor(Year))) +  geom_density(alpha=0.5)+
-  scale_fill_viridis_d() +scale_color_viridis_d()
+#define time window
+tave$hours<- gsub("t","",tave$variable)
+tave$hours<- gsub("h","",tave$hours)
+tave$hours<- factor(tave$hours, levels=c(2,6,12,24,54,80), ordered=TRUE)
+
+#plot distributions
+hr.plot.op<- ggplot(tave, aes(x=value, y=hours, color=factor(Year), fill=factor(Year) ))+
+  geom_density_ridges(lwd=1.2, alpha=0.5)+
+  scale_color_manual(values=cols2)+scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Operative temperature (°C)")+ylab("Time average (hr)")+
+  labs(color="Year", fill="Year") + 
+  xlim(11,35)
+
+tpc.agg$hours <- tpc.agg$time.class
+
+# #plot distributions with tpcs on top
+# ttplot<- ggplot()+
+#   #add densities
+#   geom_density(data= tave, aes(x=value, color=factor(Year), fill=factor(Year)))+
+#   #add lines
+#   geom_line(data= tpc.agg[which(tpc.agg$instar==5),], aes(x=temp, y=mean*10, color=factor(Year), group=hours))+
+#   #facet
+#   facet_wrap(.~hours, scales="free_y")
 
 #------------------------
 #ENVI TEMPS
@@ -185,43 +229,92 @@ t.dat2$period="recent"
 t.dat= rbind(t.dat1,t.dat2)
 
 #dtr
-dtr=function(T_max, T_min, t=7:18){
+dtr=function(x, t=1:24){
+  T_max= x[1]
+  T_min= x[2]
   gamma= 0.44 - 0.46* sin(0.9 + pi/12 * t)+ 0.11 * sin(0.9 + 2 * pi/12 * t);   # (2.2) diurnal temperature function
   T = T_max*gamma + T_min - T_min*gamma
   return(T)
 }
 
-#hourly?
-temps= sapply(t.dat$tmax, FUN="dtr", T_min=t.dat$tmin)
+#hourly
+temps=apply(t.dat[,c("tmax","tmin")], FUN="dtr", MARGIN=1)
 temps= as.data.frame(t(temps))
 temps$period= t.dat$period
 temps$site= t.dat$site
-#temps$season= t.dat$season
+temps$season= t.dat$season
 temps$month= t.dat$month
+temps$date= t.dat$DATE
 
 #to long format
-temps1<- melt(temps, id.vars=c("period","site","month"))
+colnames(temps)[1:24]=1:24
+thr<- na.omit(melt(temps, id.vars=c("period","site","month","date","season"), value.name ="Tmean",variable.name = "hr"))
 
-#density plot
-month.plot<- ggplot(temps1, aes(x=value, y=month, color=factor(month), fill=factor(month), lty=period))+
+#order by time
+thr<- thr[order(thr$date, thr$hr), ]
+
+# Calculate running averages for different time windows
+tave <- thr %>%
+  # Calculate rolling means for different windows
+  mutate(
+    # 2-hour rolling average
+    t2h = rollmean(Tmean, k = 2, fill = NA, align = "right"),
+    # 6-hour rolling average
+    t6h = rollmean(Tmean, k = 6, fill = NA, align = "right"),
+    # 12-hour rolling average
+    t12h = rollmean(Tmean, k = 12, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t24h = rollmean(Tmean, k = 24, fill = NA, align = "right"),
+    # 12-hour rolling average
+    t54h = rollmean(Tmean, k = 54, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t80h = rollmean(Tmean, k = 80, fill = NA, align = "right")
+  )
+
+#to long format
+tave<- na.omit(melt(tave[,c("period","hr","season","t2h","t6h", "t12h","t24h","t54h","t80h")], id.vars=c("hr","period","season")))
+
+#define time window
+tave$hours<- gsub("t","",tave$variable)
+tave$hours<- gsub("h","",tave$hours)
+tave$hours<- factor(tave$hours, levels=c(2,6,12,24,54,80), ordered=TRUE)
+
+#plot distributions
+hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=factor(period) ))+
   geom_density_ridges(lwd=1.2, alpha=0.5)+
-  scale_color_viridis_d(option="mako")+scale_fill_viridis_d(option="mako")+
-  #scale_color_manual(values=rev(cols))+scale_fill_manual(values=rev(cols))+
-  xlim(0,42)+
-  #ylim(5.9, 9.5)+
-  xlab("Temperature (°C)") +ylab("Month")+ 
-  guides(fill="none", color="none")+ labs(lty="Period")+
-  theme_classic(base_size = 18)+theme(legend.position = c(0.9, 0.8))
+  #facet_wrap(.~season)+
+  scale_color_manual(values=cols2)+scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +theme(legend.position = "bottom", axis.title.y=element_blank())+
+  xlab("Environmental temperature (°C)")+ylab("")+ #ylab("Time average (hr)")+
+  labs(color="Period", fill="Period") +
+  xlim(0,35)
+
+#------------
+#write out plot
+
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+
+design <- "AA
+            AA
+            BC
+            BC
+             BC"
+
+#save figure 
+pdf("./figures/Fig1.pdf",height = 8, width = 9)
+Fig1_time.plot + hr.plot.op +hr.plot.ws +plot_layout(design = design)+plot_annotation(tag_levels = 'A')
+dev.off()
 
 #------------
 #Test increasing incidence of warm temperatures
 #make variable whether temperature hot
-mod1<- lm(value~month*period, data=temps1)
+mod1<- lm(value~hours*period, data=tave)
 
-temps1$o30<- 0
-temps1$o30[temps1$temp>=25]<- 1
+tave$o30<- 0
+tave$o30[tave$value>=30]<- 1
 
-mod1 <- glm(o30~month+period, family=binomial, data=temps1) 
+mod1 <- glm(o30~hours*period, family=binomial, data=tave) 
 
 summary(mod1)
 anova(mod1)

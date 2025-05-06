@@ -21,13 +21,13 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 # Load data
-if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
-if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
 
-tpc<- read.csv("PastPresentFilteredConstantTpc2024.csv")
+tpc<- read.csv("out/PastPresentFilteredConstantTpc2024.csv")
 
 #-----
 #instar label
@@ -90,7 +90,10 @@ tpc.plot$in.lab <- in.lab[match(tpc.plot$instar, c(4,5))]
 hr.lab<- c("6 hour","24 hour")
 tpc.plot$hr.lab <- hr.lab[match(tpc.plot$time.class, c(6,24))]
 tpc.plot$hr.lab <- factor(tpc.plot$hr.lab, levels=c("6 hour","24 hour"), ordered=TRUE)
-tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("past","current"), ordered=TRUE)
+
+#rename time period
+tpc.plot$time.per <- c("initial","recent")[match(tpc.plot$time.per, c("past","current"))]
+tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("initial","recent"), ordered=TRUE)
 
 #rgr or gr
 tpc.plot$grow= tpc.plot$rgrlog
@@ -131,7 +134,7 @@ Fig2_growth.plot= rgr.plot +
 #plot time periods together
 Fig3_rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(time.class))) +
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
-  geom_point(size=2) + geom_line()+
+  geom_point(size=2.5) + geom_line(linewidth=1.25)+
   facet_grid(.~ in.lab) +
   theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
@@ -150,7 +153,8 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
 
 #----------------
 #distribution plots
-tpc$time.per<- factor(tpc$time.per, levels=c("past","current", ordered=TRUE))
+tpc$time.per <- c("initial","recent")[match(tpc$time.per, c("past","current"))]
+tpc$time.per <- factor(tpc$time.per, levels=c("initial","recent"), ordered=TRUE)
 
 #initial weights
 Fig4_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
@@ -166,3 +170,23 @@ theme_classic(base_size=16) +theme(legend.position = c(0.9, 0.8))+
 leveneTest(Mo ~ time.per, tpc[tpc$instar==4,])
 #compare means
 t.test(Mo ~ time.per, data=tpc[tpc$instar==4,], alternative = "two.sided", var.equal = FALSE)
+
+#------------
+#write out plots
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+
+#save figures 
+pdf("./figures/Fig2_growthplot.pdf",height = 8, width = 8)
+Fig2_growth.plot
+dev.off()
+
+pdf("./figures/Fig3_rgrtime.pdf",height = 6, width = 8)
+Fig3_rgrtime.plot
+dev.off()
+
+pdf("./figures/Fig4_mass.pdf",height = 6, width = 8)
+Fig4_plot.mass
+dev.off()
+
+#------------
