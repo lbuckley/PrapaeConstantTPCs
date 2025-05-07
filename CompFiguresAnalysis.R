@@ -98,6 +98,7 @@ tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("initial","recent"), ord
 #rgr or gr
 tpc.plot$grow= tpc.plot$rgrlog
 #tpc.plot$grow= tpc.plot$gr
+#tpc.plot$grow= tpc.plot$mgain
 
 rgr.plot <- ggplot(tpc.plot, aes( x = temp, y = grow, color = time.per)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) +
@@ -189,4 +190,57 @@ pdf("./figures/Fig4_mass.pdf",height = 6, width = 8)
 Fig4_plot.mass
 dev.off()
 
+#------------
+#Compare to garden TPCs
+
+#toggle between desktop (y) and laptop (n)
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
+if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
+
+#load data
+tpc<- read.csv("./data/PrapaeGardenExpt_WARP.csv")
+#drop unneeded columns
+tpc<- tpc[,-which(colnames(tpc) %in% c("X", "Species", "Population", "Study.Site"))]
+
+#update experiment labels
+expts<- c("june","july","aug")
+expts.lab<- c("June 2024","July 2024","Aug 1999")
+
+tpc$expt <- expts.lab[match(tpc$expt,expts)]
+tpc$expt <- factor(tpc$expt, levels= c("Aug 1999","June 2024","July 2024"), ordered=TRUE)
+
+#to long format
+tpc.l <- melt(tpc, id.vars = c("Mom", "ID", "f.ind", "expt","period","Mi","Pupa.wt","Fecundity", "Time.to.Pupation","Pupated","Eclosed","Time.to.Eclosion","Sex","Butt..Wt"), variable.name = "temp")
+tpc.l$temp= as.numeric(gsub("RGR","",tpc.l$temp))
+
+#estimate temperature mean values
+tpc.agg.garden <- tpc.l %>% 
+  group_by(temp, period) %>% 
+  dplyr::summarise(mean = mean(value, na.rm = TRUE),
+                   se = sd(value, na.rm = TRUE)/sqrt(length(value)) )
+
+#combine
+tpc.agg.garden$instar=4
+tpc.agg.garden$period[tpc.agg.garden$period=="past"]<-"initial"
+tpc.agg.garden$time.class<- NA
+
+tpc.agg$period<- tpc.agg$time.per
+
+tpc.agg$expt="constant TPC"
+tpc.agg.garden$expt="garden"
+
+tpc.all<- rbind(tpc.agg.garden, tpc.agg[,colnames(tpc.agg.garden)])
+#just 4th instar
+tpc.all<- tpc.all[which(tpc.all$instar==4),]
+#just 24hr for constant TPC
+tpc.all<- tpc.all[-which(tpc.all$expt=="constant TPC" & tpc.all$time.class==6),]
+
+#comparison plot
+ggplot(tpc.all, aes( x = temp, y = mean, color = period, lty=expt)) +
+  geom_point(alpha=0.4, position = position_jitterdodge()) +
+  geom_line(linewidth=1.5) 
+
+#similar, but garden increase at 23, decline at 35C recent
+#garden order: 23°C (7 hours), 11°C (15 hours overnight), 29°C (5 hours), 35°C (4 hours), and 17°C (15 hours overnight). 
+#shift in temperal dynamics
 #------------

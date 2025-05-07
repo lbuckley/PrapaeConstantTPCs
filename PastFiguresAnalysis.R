@@ -214,6 +214,16 @@ t.dat$year= year(as.POSIXlt(t.dat$DATE))
 #restrict to growing season
 t.dat= t.dat[which(t.dat$month %in% c(4,5,6,7,8,9)),] 
 
+#dtr over time
+t.dat$dtr<- t.dat$tmax-t.dat$tmin
+t.dtr <- t.dat %>%
+  group_by(year) %>% 
+  dplyr::summarise(dtrm = mean(dtr, na.rm = TRUE))
+  
+ggplot(t.dtr, aes(x=year, y=dtrm))+geom_line()+geom_smooth(method="lm") 
+    
+#-------
+
 #code season
 t.dat$season<- NA
 t.dat$season[which(t.dat$month %in% c(4:6))] ="spring"
