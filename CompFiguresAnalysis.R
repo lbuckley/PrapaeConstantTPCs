@@ -78,6 +78,15 @@ ggplot(tpc.plot, aes(x = time, y = gr, color = time.per)) + #y = mgain
   geom_point(alpha=0.4, position = position_jitterdodge()) +
   facet_grid(temp ~ instar) +xlim(0,40)
 
+#----
+#GAM
+mod.gam <- gam(rgrlog ~ Mo + 
+                 s(temp, bs = "cr", k=5, by = interaction(time, time.class, instar))+
+                 time*time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+               data = na.omit(tpc),
+               method = "REML")
+summary(mod.gam)
+
 #---------------------
 #PLOT
 #Figure 2
