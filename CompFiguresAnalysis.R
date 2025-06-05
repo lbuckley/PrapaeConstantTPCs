@@ -21,7 +21,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -52,8 +52,8 @@ anova(mod)
 plot_model(mod, type = "pred", terms = c("time", "temp"), show.data=TRUE)
 
 #lme: issues accounting for individual
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time, random=~1|mom, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
 anova(mod.lmer)
 
 plot_model(mod.lmer, type = "pred", terms = c("time", "temp"), show.data=TRUE)
@@ -130,6 +130,10 @@ Fig2_growth.plot= rgr.plot +
 #not individuals at every temp
 #rgr.plot= rgr.plot +
 #geom_line(data=tpc.agg.f, aes(x=temp, y = mean, group=mom), linewidth=1)
+
+#Model
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
+anova(mod.lmer)
 
 #-------
 #plot time periods together
@@ -242,5 +246,5 @@ ggplot(tpc.all, aes( x = temp, y = mean, color = period, lty=expt)) +
 
 #similar, but garden increase at 23, decline at 35C recent
 #garden order: 23°C (7 hours), 11°C (15 hours overnight), 29°C (5 hours), 35°C (4 hours), and 17°C (15 hours overnight). 
-#shift in temperal dynamics
+#shift in temporal dynamics
 #------------

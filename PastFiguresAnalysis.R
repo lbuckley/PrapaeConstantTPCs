@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -83,6 +83,9 @@ Fig1_time.plot<- ggplot(tpc.agg, aes(x = temp, y = mean, color = time.class)) +
   labs(color="Time (hr)")+scale_color_viridis_d()+
   xlim(11,41)
 
+#make time numeric
+tpc1$time.n <- as.numeric(tpc1$time.class)
+
 #model
 mod= lm(rgrlog ~ Mo + poly(temp)*time.class*instar, data= tpc1) 
 #by instar
@@ -91,9 +94,21 @@ anova(mod)
 
 plot_model(mod, type = "pred", terms = c("time.class", "temp"), show.data=TRUE)
 
-#lme: issues accounting for individual
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.class*instar, random=~1|UniID, data = na.omit(tpc1))
-anova(mod)
+#lme: issues accounting for individual ~1|UniID
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.class*instar, random=~1|mom/ID, data = na.omit(tpc1))
+anova(mod.lmer)
+
+#by instar
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.n, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==5,]))
+summary(mod.lmer)
+anova(mod.lmer)
+#4th: time.n            -0.00292623 0.000242389
+#5th: time.n            -0.00305272 0.000212852
+
+mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
+
+mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
+
 
 #Kingsolver et al. notes
 #Because growth during the 5th instar is approximately isometric (rather than allometric or exponential) we modeled mass on an arithmetic (rather than log) scale
@@ -192,6 +207,11 @@ tpc.agg$hours <- tpc.agg$time.class
 #   geom_line(data= tpc.agg[which(tpc.agg$instar==5),], aes(x=temp, y=mean*10, color=factor(Year), group=hours))+
 #   #facet
 #   facet_wrap(.~hours, scales="free_y")
+
+#analysis
+tave$hours.n<- as.numeric(tave$hours)
+mod<- lm(value~Year*hours.n, data=tave)
+anova(mod)
 
 #------------------------
 #ENVI TEMPS
@@ -299,6 +319,11 @@ hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=facto
   labs(color="Period", fill="Period") +
   xlim(0,35)
 
+#analysis
+tave$hours.n<- as.numeric(tave$hours)
+mod<- lm(value~period*hours.n, data=tave)
+anova(mod)
+
 #------------
 #write out plot
 
@@ -327,7 +352,7 @@ tave$o30[tave$value>=30]<- 1
 mod1 <- glm(o30~hours*period, family=binomial, data=tave) 
 
 summary(mod1)
-anova(mod1)
+anova(mod1, test="Chisq")
 
 
 
