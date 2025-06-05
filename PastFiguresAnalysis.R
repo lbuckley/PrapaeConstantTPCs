@@ -16,6 +16,7 @@ library(car)
 library(ggridges)
 library(zoo)
 library(TrenchR)
+library(mgcv)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
@@ -94,6 +95,7 @@ anova(mod)
 
 plot_model(mod, type = "pred", terms = c("time.class", "temp"), show.data=TRUE)
 
+
 #lme: issues accounting for individual ~1|UniID
 mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.class*instar, random=~1|mom/ID, data = na.omit(tpc1))
 anova(mod.lmer)
@@ -108,7 +110,15 @@ anova(mod.lmer)
 mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
 
 mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
+#----------------
 
+#GAM
+mod.gam <- gam(rgrlog ~ Mo + 
+                 s(temp, bs = "cr", k=5, by = interaction(time.class, instar))+
+               time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+               data = na.omit(tpc1),
+               method = "REML")
+summary(mod.gam)
 
 #Kingsolver et al. notes
 #Because growth during the 5th instar is approximately isometric (rather than allometric or exponential) we modeled mass on an arithmetic (rather than log) scale

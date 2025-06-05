@@ -78,6 +78,15 @@ ggplot(tpc.plot, aes(x = time, y = gr, color = time.per)) + #y = mgain
   geom_point(alpha=0.4, position = position_jitterdodge()) +
   facet_grid(temp ~ instar) +xlim(0,40)
 
+#----
+#GAM
+mod.gam <- gam(rgrlog ~ Mo + 
+                 s(temp, bs = "cr", k=5, by = interaction(time, time.class, instar))+
+                 time*time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+               data = na.omit(tpc),
+               method = "REML")
+summary(mod.gam)
+
 #---------------------
 #PLOT
 #Figure 2
@@ -134,6 +143,15 @@ Fig2_growth.plot= rgr.plot +
 #Model
 mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
 anova(mod.lmer)
+
+#----
+#GAM
+mod.gam <- gam(rgrlog ~ Mo + 
+                 s(temp, bs = "cr", k=5, by = interaction(time.per, time.class, instar))+
+                 time.per*time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+               data = na.omit(tpc.plot),
+               method = "REML")
+summary(mod.gam)
 
 #-------
 #plot time periods together
