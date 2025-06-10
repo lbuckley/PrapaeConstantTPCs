@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -38,62 +38,16 @@ tpc$in.lab <- in.lab[match(tpc$instar, c(4,5))]
 #set up time classes: 6 and 24 hr studies
 tpc$time.class<- NA
 #expand windows
+tpc$time.class[which(tpc$time==0)]<-0 
 tpc$time.class[which(tpc$time>5.5 & tpc$time<7.5)]<-6 #or to 8.5
 tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
 
 #set up broader time class
 tpc$time.class.b<- NA
 #expand windows
+tpc$time.class.b[which(tpc$time==0)]<-0 
 tpc$time.class.b[which(tpc$time<12)]<-6 #or to 8.5
 tpc$time.class.b[which(tpc$time>=12 & tpc$time<36)]<-24
-
-#--------
-#check time dependence of feeding
-tpc1<- tpc[which(tpc$time.per=="past"),]
-tpc1$UniID <- factor(tpc1$UniID)
-
-#restrict to potential time limits
-mod= lm(rgrlog ~ Mo + poly(temp,3)*time, data= tpc1[which(tpc1$time.class==6),]) 
-mod= lm(rgrlog ~ Mo + poly(temp,3)*time, data= tpc1[which(tpc1$time.class==24),]) 
-anova(mod)
-
-plot_model(mod, type = "pred", terms = c("time", "temp"), show.data=TRUE)
-
-#lme: issues accounting for individual
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
-anova(mod.lmer)
-
-plot_model(mod.lmer, type = "pred", terms = c("time", "temp"), show.data=TRUE)
-
-#plot temp and time
-ggplot(tpc1[which(tpc1$time>5 & tpc1$time<10),], aes(x = temp, y=gr, color = time)) + 
-  geom_point(alpha=0.4, position = position_jitterdodge()) +geom_smooth()
-
-#Model
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time*time.per*time.class*instar, random=~1|UniID, data = na.omit(tpc))
-anova(mod.lmer)
-
-#plot feeding rate over time to assess time adjustments
-tpc.plot <- tpc[which(tpc$time>0),]
-tpc.plot$mass.r<- log10(tpc.plot$fw/tpc.plot$Mo)
-
-ggplot(tpc.plot[tpc.plot$time.class==24,], aes(x = time, y = gr, color = time.per)) + #y = mgain
-  geom_point(alpha=0.4, position = position_jitterdodge()) +
-  facet_grid(temp ~ instar) +xlim(0,40)
-
-ggplot(tpc.plot, aes(x = time, y = gr, color = time.per)) + #y = mgain
-  geom_point(alpha=0.4, position = position_jitterdodge()) +
-  facet_grid(temp ~ instar) +xlim(0,40)
-
-#----
-#GAM
-mod.gam <- gam(rgrlog ~ Mo + 
-                 s(temp, bs = "cr", k=5, by = interaction(time, time.class, instar))+
-                 time*time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
-               data = na.omit(tpc),
-               method = "REML")
-summary(mod.gam)
 
 #---------------------
 #PLOT
@@ -133,8 +87,12 @@ tpc.agg <- tpc.plot %>%
   dplyr::summarise(
     mean = mean(grow, na.rm = TRUE),
     n= length(grow),
-    sd = sd(grow, na.rm = TRUE) )
+    sd = sd(grow, na.rm = TRUE),
+    mean.mass = mean(fw-Mo, na.rm = TRUE),
+    sd.mass = sd(fw-Mo, na.rm = TRUE) )
+
 tpc.agg$se= tpc.agg$sd / sqrt(tpc.agg$n)
+tpc.agg$se.mass= tpc.agg$sd / sqrt(tpc.agg$n)
 
 #restrict to points 
 tpc.agg<- tpc.agg[which(tpc.agg$n>5),]
@@ -188,14 +146,17 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   theme(legend.position="bottom")
 
 #-------
-#Mass Plot #UPDATE
-Fig2_mass.plot<- ggplot(tpc.plot, aes(x = time, y = fw-Mo, color = factor(temp), group=factor(temp) )) + 
-  geom_point() + geom_line()+
-  geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
-  facet_grid(. ~ in.lab) +
-  theme_bw(base_size=18) +theme(legend.position = "bottom")+
-  xlab("Time (hr)")+ylab("Mass gain (mg)")+
-  labs(color="Temperature (°C)")+scale_color_viridis_d()
+#Mass Plot 
+tpc.agg$per.temp<- paste(tpc.agg$time.per, tpc.agg$temp, sep="_")
+
+Fig2_mass.plot= ggplot(data=tpc.agg, aes(x=time.class, y = mean.mass, color=factor(temp), group=factor(per.temp), lty=time.per)) +
+  geom_line()+
+  geom_errorbar(data=tpc.agg, aes(x=temp, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+  geom_point(size=3)+
+  theme_bw(base_size=16)+xlab("Time (h)")+ylab("Mass gain (mg)")+
+  scale_color_viridis_d()+
+  labs(color="Temperature (°C)")+theme(legend.position="bottom")+
+  facet_grid(in.lab~., scales="free_y") +xlim(0,24)
 
 #----------------
 #distribution plots

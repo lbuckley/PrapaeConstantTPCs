@@ -21,7 +21,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
@@ -126,7 +126,7 @@ tpc$active[which(tpc$active %in% c("no","n?"))]<- "n"
 tpc <- tpc %>% filter(active %in% c("y"))
 
 #drop initial zero time estimates
-tpc<- tpc[which(tpc$time>0),]
+#tpc<- tpc[which(tpc$time>0),]
 
 # calculate relative growth rate using logarithmic scale for 1999 past data set
 #Kingsolver and Gomulkiewicz 2003

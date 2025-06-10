@@ -92,7 +92,7 @@ tpc.agg$time.class <- as.numeric(as.character(tpc.agg$time.class))
 tpc.agg$time.temp<- paste(tpc.agg$time.class, tpc.agg$temp, sep="_")
 
 #Mass Plot
-Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass+0.0001, color = factor(temp), group=factor(temp) )) + 
+Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
   geom_point() + geom_line()+
   geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   facet_grid(. ~ in.lab) +
