@@ -15,6 +15,7 @@ library(nlme)
 library(lme4)
 library(sjPlot)
 library(car)
+library(mgcv)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
@@ -39,21 +40,28 @@ tpc$time.class<- NA
 #expand windows
 tpc$time.class[which(tpc$time>5.5 & tpc$time<7.5)]<-6 #or to 8.5
 tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
+
+#set up broader time class
+tpc$time.class.b<- NA
+#expand windows
+tpc$time.class.b[which(tpc$time<12)]<-6 #or to 8.5
+tpc$time.class.b[which(tpc$time>=12 & tpc$time<36)]<-24
+
 #--------
 #check time dependence of feeding
 tpc1<- tpc[which(tpc$time.per=="past"),]
 tpc1$UniID <- factor(tpc1$UniID)
 
 #restrict to potential time limits
-mod= lm(rgrlog ~ Mo + poly(temp)*time, data= tpc1[which(tpc1$time.class==6),]) 
-mod= lm(rgrlog ~ Mo + poly(temp)*time, data= tpc1[which(tpc1$time.class==24),]) 
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time, data= tpc1[which(tpc1$time.class==6),]) 
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time, data= tpc1[which(tpc1$time.class==24),]) 
 anova(mod)
 
 plot_model(mod, type = "pred", terms = c("time", "temp"), show.data=TRUE)
 
 #lme: issues accounting for individual
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>5 & tpc1$time<10),]))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time, random=~1|mom/ID, data = na.omit(tpc1[which(tpc1$time>21 & tpc1$time<26),]))
 anova(mod.lmer)
 
 plot_model(mod.lmer, type = "pred", terms = c("time", "temp"), show.data=TRUE)
@@ -63,7 +71,7 @@ ggplot(tpc1[which(tpc1$time>5 & tpc1$time<10),], aes(x = temp, y=gr, color = tim
   geom_point(alpha=0.4, position = position_jitterdodge()) +geom_smooth()
 
 #Model
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time*time.per*time.class*instar, random=~1|UniID, data = na.omit(tpc))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time*time.per*time.class*instar, random=~1|UniID, data = na.omit(tpc))
 anova(mod.lmer)
 
 #plot feeding rate over time to assess time adjustments
@@ -90,6 +98,11 @@ summary(mod.gam)
 #---------------------
 #PLOT
 #Figure 2
+
+## broader time class
+tpc$time.class.n<- tpc$time.class
+tpc$time.class<- tpc$time.class.b
+
 #plot temperature sensitivity
 tpc.plot <- tpc[which(!is.na(tpc$time.class)),]
 
@@ -141,7 +154,7 @@ Fig2_growth.plot= rgr.plot +
 #geom_line(data=tpc.agg.f, aes(x=temp, y = mean, group=mom), linewidth=1)
 
 #Model
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
 anova(mod.lmer)
 
 #----
@@ -173,6 +186,16 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
   labs(color="Time period", fill="Time period", lty="Instar")+
   theme(legend.position="bottom")
+
+#-------
+#Mass Plot #UPDATE
+Fig2_mass.plot<- ggplot(tpc.plot, aes(x = time, y = fw-Mo, color = factor(temp), group=factor(temp) )) + 
+  geom_point() + geom_line()+
+  geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+  facet_grid(. ~ in.lab) +
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  labs(color="Temperature (°C)")+scale_color_viridis_d()
 
 #----------------
 #distribution plots

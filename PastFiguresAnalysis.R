@@ -62,8 +62,12 @@ tpc.agg <- tpc1 %>%
   dplyr::summarise(
     mean = mean(grow, na.rm = TRUE),
     n= length(grow),
-    sd = sd(grow, na.rm = TRUE) )
+    sd = sd(grow, na.rm = TRUE),
+    mean.mass = mean(fw-Mo, na.rm = TRUE),
+    sd.mass = sd(fw-Mo, na.rm = TRUE)
+    )
 tpc.agg$se= tpc.agg$sd / sqrt(tpc.agg$n)
+tpc.agg$se.mass= tpc.agg$sd.mass / sqrt(tpc.agg$n)
 
 #restrict to points with 6 measurements
 tpc.agg<- tpc.agg[-which(tpc.agg$n<6),]
@@ -80,36 +84,49 @@ Fig1_time.plot<- ggplot(tpc.agg, aes(x = temp, y = mean, color = time.class)) +
   geom_errorbar(aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   facet_grid(. ~ in.lab) +
   theme_bw(base_size=18) +theme(legend.position = "bottom")+
-  xlab("Temperature (°C)")+ylab("Growth rate (g/g/hr)")+
+  xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/hr)")+
   labs(color="Time (hr)")+scale_color_viridis_d()+
   xlim(11,41)
+
+tpc.agg$time.class <- as.numeric(as.character(tpc.agg$time.class))
+tpc.agg$time.temp<- paste(tpc.agg$time.class, tpc.agg$temp, sep="_")
+
+#Mass Plot
+Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass+0.0001, color = factor(temp), group=factor(temp) )) + 
+  geom_point() + geom_line()+
+  geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+  facet_grid(. ~ in.lab) +
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  labs(color="Temperature (°C)")+scale_color_viridis_d()
+  #+coord_trans(y = "log")
 
 #make time numeric
 tpc1$time.n <- as.numeric(tpc1$time.class)
 
 #model
-mod= lm(rgrlog ~ Mo + poly(temp)*time.class*instar, data= tpc1) 
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time.class*instar, data= tpc1) 
 #by instar
-mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time.class, data= tpc1[tpc1$instar==5,]) 
 anova(mod)
 
 plot_model(mod, type = "pred", terms = c("time.class", "temp"), show.data=TRUE)
 
 
 #lme: issues accounting for individual ~1|UniID
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.class*instar, random=~1|mom/ID, data = na.omit(tpc1))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time.class*instar, random=~1|mom/ID, data = na.omit(tpc1))
 anova(mod.lmer)
 
 #by instar
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp)*time.n, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==5,]))
+mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time.n, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==5,]))
 summary(mod.lmer)
 anova(mod.lmer)
 #4th: time.n            -0.00292623 0.000242389
 #5th: time.n            -0.00305272 0.000212852
 
-mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time.class, data= tpc1[tpc1$instar==5,]) 
 
-mod= lm(rgrlog ~ Mo + poly(temp)*time.class, data= tpc1[tpc1$instar==5,]) 
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time.class, data= tpc1[tpc1$instar==5,]) 
 #----------------
 
 #GAM
