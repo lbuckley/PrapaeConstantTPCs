@@ -39,23 +39,12 @@ tpc$in.lab <- in.lab[match(tpc$instar, c(4,5))]
 tpc$time.class<- NA
 #expand windows
 tpc$time.class[which(tpc$time==0)]<-0 
-tpc$time.class[which(tpc$time>5.5 & tpc$time<7.5)]<-6 #or to 8.5
+tpc$time.class[which(tpc$time>5.5 & tpc$time<10)]<-6 
 tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
-
-#set up broader time class
-tpc$time.class.b<- NA
-#expand windows
-tpc$time.class.b[which(tpc$time==0)]<-0 
-tpc$time.class.b[which(tpc$time<12)]<-6 #or to 8.5
-tpc$time.class.b[which(tpc$time>=12 & tpc$time<36)]<-24
 
 #---------------------
 #PLOT
 #Figure 2
-
-## broader time class
-tpc$time.class.n<- tpc$time.class
-tpc$time.class<- tpc$time.class.b
 
 #plot temperature sensitivity
 tpc.plot <- tpc[which(!is.na(tpc$time.class)),]
@@ -76,13 +65,16 @@ tpc.plot$grow= tpc.plot$rgrlog
 #tpc.plot$grow= tpc.plot$gr
 #tpc.plot$grow= tpc.plot$mgain
 
-rgr.plot <- ggplot(tpc.plot, aes( x = temp, y = grow, color = time.per)) +
+rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab)),], aes( x = temp, y = grow, color = time.per)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) +
   facet_grid(hr.lab ~ in.lab) 
 
+tpc.plot[which(tpc.plot$temp==41 & tpc.plot$time.per=="recent" & tpc.plot$instar==4),]
+
 #---
 #plot temp means
-tpc.agg <- tpc.plot %>%
+tpc.agg<- tpc.plot[which(!is.na(tpc.plot$time.class)),]
+tpc.agg <- tpc.agg %>%
   group_by(temp, time.per, time.class, instar, hr.lab, in.lab) %>% 
   dplyr::summarise(
     mean = mean(grow, na.rm = TRUE),
@@ -96,6 +88,7 @@ tpc.agg$se.mass= tpc.agg$sd / sqrt(tpc.agg$n)
 
 #restrict to points 
 tpc.agg<- tpc.agg[which(tpc.agg$n>5),]
+tpc.agg<- tpc.agg[which(!is.na(tpc.agg$hr.lab)),]
 
 #plotting temp means with error bars
 Fig2_growth.plot= rgr.plot + 
@@ -116,13 +109,13 @@ mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time.per*time.class*instar, random=~1
 anova(mod.lmer)
 
 #----
-#GAM
-mod.gam <- gam(rgrlog ~ Mo + 
-                 s(temp, bs = "cr", k=5, by = interaction(time.per, time.class, instar))+
-                 time.per*time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
-               data = na.omit(tpc.plot),
-               method = "REML")
-summary(mod.gam)
+# #GAM
+# mod.gam <- gam(rgrlog ~ Mo + 
+#                  s(temp, bs = "cr", k=5, by = interaction(time.per, time.class, instar))+
+#                  time.per*time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+#                data = na.omit(tpc.plot),
+#                method = "REML")
+# summary(mod.gam)
 
 #-------
 #plot time periods together
