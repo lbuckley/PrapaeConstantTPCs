@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -39,15 +39,20 @@ tpc$in.lab <- in.lab[match(tpc$instar, c(4,5))]
 tpc$time.class<- NA
 #expand windows
 tpc$time.class[which(tpc$time==0)]<-0 
-tpc$time.class[which(tpc$time>5.5 & tpc$time<10)]<-6 
+tpc$time.class[which(tpc$time>5 & tpc$time<10)]<-6 
 tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
+
+# tpc.ch<- tpc[which(tpc$instar==4 & tpc$temp==35 & tpc$time.per=="past"),]
+# ggplot(tpc.ch, aes( x = time, y = rgrlog, color = time.class))+
+#   geom_point()+xlim(0,10)
 
 #---------------------
 #PLOT
 #Figure 2
 
 #plot temperature sensitivity
-tpc.plot <- tpc[which(!is.na(tpc$time.class)),]
+tpc.plot <- tpc
+#tpc.plot <- tpc[which(!is.na(tpc$time.class)),]
 
 #update labels
 in.lab<- c("4th instar", "5th instar")
@@ -60,7 +65,7 @@ tpc.plot$hr.lab <- factor(tpc.plot$hr.lab, levels=c("6 hour","24 hour"), ordered
 tpc.plot$time.per <- c("initial","recent")[match(tpc.plot$time.per, c("past","current"))]
 tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("initial","recent"), ordered=TRUE)
 
-#rgr or gr
+#rgr or grow
 tpc.plot$grow= tpc.plot$rgrlog
 #tpc.plot$grow= tpc.plot$gr
 #tpc.plot$grow= tpc.plot$mgain
@@ -73,7 +78,7 @@ tpc.plot[which(tpc.plot$temp==41 & tpc.plot$time.per=="recent" & tpc.plot$instar
 
 #---
 #plot temp means
-tpc.agg<- tpc.plot[which(!is.na(tpc.plot$time.class)),]
+tpc.agg<- tpc.plot #[which(!is.na(tpc.plot$time.class)),]
 tpc.agg <- tpc.agg %>%
   group_by(temp, time.per, time.class, instar, hr.lab, in.lab) %>% 
   dplyr::summarise(

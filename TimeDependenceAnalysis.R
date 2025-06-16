@@ -44,7 +44,7 @@ tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
 #set up broader time class
 tpc$time.class.b<- NA
 #expand windows
-tpc$time.class.b[which(tpc$time>5.5 & tpc$time<10)]<-6 
+tpc$time.class.b[which(tpc$time>5 & tpc$time<10)]<-6 
 tpc$time.class.b[which(tpc$time>=21.5 & tpc$time<26)]<-24 #or 27
 
 #fix hour label
