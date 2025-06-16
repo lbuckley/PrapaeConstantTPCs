@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -72,9 +72,9 @@ tpc.plot$grow= tpc.plot$rgrlog
 
 rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab)),], aes( x = temp, y = grow, color = time.per)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) +
-  facet_grid(hr.lab ~ in.lab) 
+  facet_grid(hr.lab ~ in.lab, scales="free_y") 
 
-tpc.plot[which(tpc.plot$temp==41 & tpc.plot$time.per=="recent" & tpc.plot$instar==4),]
+#tpc.plot[which(tpc.plot$temp==41 & tpc.plot$time.per=="recent" & tpc.plot$instar==4),]
 
 #---
 #plot temp means
@@ -89,10 +89,11 @@ tpc.agg <- tpc.agg %>%
     sd.mass = sd(fw-Mo, na.rm = TRUE) )
 
 tpc.agg$se= tpc.agg$sd / sqrt(tpc.agg$n)
-tpc.agg$se.mass= tpc.agg$sd / sqrt(tpc.agg$n)
+tpc.agg$se.mass= tpc.agg$sd.mass / sqrt(tpc.agg$n)
 
 #restrict to points 
 tpc.agg<- tpc.agg[which(tpc.agg$n>5),]
+tpc.agg.mass<- tpc.agg
 tpc.agg<- tpc.agg[which(!is.na(tpc.agg$hr.lab)),]
 
 #plotting temp means with error bars
@@ -145,16 +146,20 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
 
 #-------
 #Mass Plot 
-tpc.agg$per.temp<- paste(tpc.agg$time.per, tpc.agg$temp, sep="_")
+tpc.agg.mass$per.temp<- paste(tpc.agg.mass$time.per, tpc.agg.mass$temp, sep="_")
+#restrict time
+tpc.agg.mass<- tpc.agg.mass[which(!is.na(tpc.agg.mass$time.class)),]
+#fix time 0 error bars
+tpc.agg.mass$se.mass[which(tpc.agg.mass$time.class==0)]<- 0
 
-Fig2_mass.plot= ggplot(data=tpc.agg, aes(x=time.class, y = mean.mass, color=factor(temp), group=factor(per.temp), lty=time.per)) +
-  geom_line()+
-  geom_errorbar(data=tpc.agg, aes(x=temp, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+FigSx_mass.plot= ggplot(data=tpc.agg.mass, aes(x=time.class, y = mean.mass, color=factor(temp), group=factor(per.temp), lty=time.per)) +
+  geom_line(size=1.25)+
+  geom_errorbar(data=tpc.agg.mass, aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   geom_point(size=3)+
   theme_bw(base_size=16)+xlab("Time (h)")+ylab("Mass gain (mg)")+
   scale_color_viridis_d()+
   labs(color="Temperature (°C)")+theme(legend.position="bottom")+
-  facet_grid(in.lab~., scales="free_y") +xlim(0,24)
+  facet_wrap(.~in.lab, scales="free_y") +xlim(0,24)
 
 #----------------
 #distribution plots
@@ -194,7 +199,12 @@ pdf("./figures/Fig4_mass.pdf",height = 6, width = 8)
 Fig4_plot.mass
 dev.off()
 
-#------------
+#supplementary mass plot
+pdf("./figures/FigSx_masstime.pdf",height = 6, width = 8)
+FigSx_mass.plot
+dev.off()
+
+#=====================
 #Compare to garden TPCs
 
 #toggle between desktop (y) and laptop (n)

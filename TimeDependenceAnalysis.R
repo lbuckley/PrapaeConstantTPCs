@@ -145,7 +145,7 @@ tpc.all<- rbind(tpc.agg, tpc.agg.b)
 tpc.all<- tpc.all[which(!is.na(tpc.all$time.class)),]
 
 #COMPARE NARROW AND BROAD DEFINITION
-Fig3_rgrtime.timeplot <- ggplot(tpc.all[which(tpc.all$time.per=="past"),], aes( x = temp, y = mean, lty = time.per, color=factor(time.type))) +
+FigSx_rgrtime.timeplot.comp <- ggplot(tpc.all[which(tpc.all$time.per=="past"),], aes( x = temp, y = mean, lty = time.per, color=factor(time.type))) +
   #geom_errorbar(data=tpc.all, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(size=2.5) + geom_line(linewidth=1.25)+
   facet_grid(time.class ~ in.lab) +

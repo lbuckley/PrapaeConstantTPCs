@@ -23,7 +23,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -98,7 +98,7 @@ Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = fact
   facet_grid(. ~ in.lab) +
   theme_bw(base_size=18) +theme(legend.position = "bottom")+
   xlab("Time (hr)")+ylab("Mass gain (mg)")+
-  labs(color="Temperature (°C)")+scale_color_viridis_d()
+  labs(color="Temperature (°C)")+scale_color_viridis_d(option="turbo")
   #+coord_trans(y = "log")
 
 #make time numeric
@@ -130,12 +130,12 @@ mod= lm(rgrlog ~ Mo + poly(temp,3)*time.class, data= tpc1[tpc1$instar==5,])
 #----------------
 
 #GAM
-mod.gam <- gam(rgrlog ~ Mo + 
-                 s(temp, bs = "cr", k=5, by = interaction(time.class, instar))+
-               time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
-               data = na.omit(tpc1),
-               method = "REML")
-summary(mod.gam)
+# mod.gam <- gam(rgrlog ~ Mo + 
+#                  s(temp, bs = "cr", k=5, by = interaction(time.class, instar))+
+#                time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+#                data = na.omit(tpc1),
+#                method = "REML")
+# summary(mod.gam)
 
 #Kingsolver et al. notes
 #Because growth during the 5th instar is approximately isometric (rather than allometric or exponential) we modeled mass on an arithmetic (rather than log) scale
@@ -359,13 +359,15 @@ if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckle
 
 design <- "AA
             AA
-            BC
-            BC
-             BC"
+            BB
+            BB
+            CD
+            CD
+             CD"
 
 #save figure 
-pdf("./figures/Fig1.pdf",height = 8, width = 9)
-Fig1_time.plot + hr.plot.op +hr.plot.ws +plot_layout(design = design)+plot_annotation(tag_levels = 'A')
+pdf("./figures/Fig1.pdf",height = 12, width = 9)
+Fig1_time.plot + Fig1_mass.plot +hr.plot.op +hr.plot.ws +plot_layout(design = design)+plot_annotation(tag_levels = 'A')
 dev.off()
 
 #------------
