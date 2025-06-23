@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -151,8 +151,34 @@ FigSx_rgrtime.timeplot.comp <- ggplot(tpc.all[which(tpc.all$time.per=="past"),],
   facet_grid(time.class ~ in.lab) +
   theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
   scale_color_viridis_d()+
-  labs(color="Time period", fill="Time period", lty="Time (hr)")+theme(legend.position="bottom")+
+  labs(color="Time type", fill="Time type", lty="Time (hr)")+theme(legend.position="bottom")+
   geom_hline(yintercept=0, col="darkgray")
+
+#--------------
+#model differences
+
+#find points omitted
+tpc.plot$added<- "both"
+tpc.plot$added[which(is.na(tpc.plot$time.class) & !is.na(tpc.plot$time.class.b))]<- "broad"
+
+tpc.comp.n<- tpc.plot[which(!is.na(tpc.plot$time.class)),c("rgrlog","grow","Mo","temp","time","mom","ID","time.per","instar","time.class.b","in.lab")] 
+tpc.comp.b<- tpc.plot[which(!is.na(tpc.plot$time.class.b)),c("rgrlog","grow","Mo","temp","time","mom","ID","time.per","instar","time.class.b","in.lab")] 
+
+tpc.comp.n$time.type<- "narrow"
+tpc.comp.b$time.type<- "broad"
+
+tpc.comp<- rbind(tpc.comp.n, tpc.comp.b)
+
+#restrict to potential time limits
+mod= lm(rgrlog ~ Mo + poly(temp,3)*time.per*time.type, data= tpc.comp[which(tpc.comp$time.class.b==6 &tpc.comp$instar==4),]) 
+anova(mod)
+
+#------
+#plot data points
+
+rgr.plot.nb <- ggplot(tpc.plot[which(tpc.plot$time.per=="past" & !is.na(tpc.plot$time.class.b) ),], aes( x = temp, y = grow, color = added)) +
+  geom_point(alpha=0.4, position = position_jitterdodge()) +
+  facet_grid(time.class.b ~ in.lab, scales="free_y") 
 
 #-----------------
 #aes(fill=time.type), pch=21, 
@@ -171,5 +197,4 @@ ggplot(tpc.s[tpc.s$time.class.b==6,], aes(x = time, y = gr, color = time.per)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) 
 
 tpc.agg.b[which(tpc.agg.b$time.per=="past" & tpc.agg.b$time.class.b==24 & tpc.agg.b$instar==4),]
-
 
