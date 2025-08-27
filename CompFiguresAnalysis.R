@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 # Load data
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
@@ -207,6 +207,7 @@ dev.off()
 #=====================
 #Compare to garden TPCs
 
+#add garden data
 #toggle between desktop (y) and laptop (n)
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
 if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
@@ -227,30 +228,59 @@ tpc$expt <- factor(tpc$expt, levels= c("Aug 1999","June 2024","July 2024"), orde
 tpc.l <- melt(tpc, id.vars = c("Mom", "ID", "f.ind", "expt","period","Mi","Pupa.wt","Fecundity", "Time.to.Pupation","Pupated","Eclosed","Time.to.Eclosion","Sex","Butt..Wt"), variable.name = "temp")
 tpc.l$temp= as.numeric(gsub("RGR","",tpc.l$temp))
 
+tpc.l$value<- as.numeric(tpc.l$value)
+
 #estimate temperature mean values
 tpc.agg.garden <- tpc.l %>% 
   group_by(temp, period) %>% 
   dplyr::summarise(mean = mean(value, na.rm = TRUE),
                    se = sd(value, na.rm = TRUE)/sqrt(length(value)) )
 
+tpc.agg.garden <- na.omit(tpc.agg.garden)
+#-------
+#add Quant gen data
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/PrapaeQuantGen/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/PrapaeQuantGen/")
+
+#load data
+tpc<- read.csv("data/TPC_quantgen_combined_RGR.csv")
+
+#estimate temperature mean values
+tpc.agg.qg <- tpc %>% 
+  group_by(temp, Expt, Year) %>% 
+  dplyr::summarise(mean = mean(value, na.rm = TRUE),
+                   se = sd(value, na.rm = TRUE)/sqrt(length(value)) )
+
+#drop experiment I
+tpc.agg.qg <- tpc.agg.qg[which(tpc.agg.qg$Expt=="II"),]
+
+tpc.agg.qg <- na.omit(tpc.agg.qg)
+#-------
 #combine
 tpc.agg.garden$instar=4
 tpc.agg.garden$period[tpc.agg.garden$period=="past"]<-"initial"
 tpc.agg.garden$time.class<- NA
 
+tpc.agg.qg$instar=4
+tpc.agg.qg$period<-"initial"
+tpc.agg.qg$period[tpc.agg.qg$Year=="2025"]<-"recent"
+tpc.agg.qg$time.class<- NA
+
 tpc.agg$period<- tpc.agg$time.per
 
 tpc.agg$expt="constant TPC"
 tpc.agg.garden$expt="garden"
+tpc.agg.qg$expt="QG"
 
-tpc.all<- rbind(tpc.agg.garden, tpc.agg[,colnames(tpc.agg.garden)])
+tpc.all<- rbind(tpc.agg.garden, tpc.agg[,colnames(tpc.agg.garden)], 
+                tpc.agg.qg[,colnames(tpc.agg.garden)])
 #just 4th instar
 tpc.all<- tpc.all[which(tpc.all$instar==4),]
 #just 24hr for constant TPC
 tpc.all<- tpc.all[-which(tpc.all$expt=="constant TPC" & tpc.all$time.class==6),]
 
 #comparison plot
-ggplot(tpc.all, aes( x = temp, y = mean, color = period, lty=expt)) +
+ggplot(tpc.all, aes( x = temp, y = mean, color = expt, lty=period)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) +
   geom_line(linewidth=1.5) 
 
@@ -258,3 +288,13 @@ ggplot(tpc.all, aes( x = temp, y = mean, color = period, lty=expt)) +
 #garden order: 23°C (7 hours), 11°C (15 hours overnight), 29°C (5 hours), 35°C (4 hours), and 17°C (15 hours overnight). 
 #shift in temporal dynamics
 #------------
+
+#assess mass
+
+rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab) & tpc.plot$time.per=="recent"),], aes( x = Mo, y = grow, color = temp)) +
+  geom_point(alpha=0.4, position = position_jitterdodge()) +
+  facet_grid(hr.lab ~ in.lab, scales="free_y") 
+
+
+
+
