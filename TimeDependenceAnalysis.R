@@ -76,8 +76,8 @@ ggplot(tpc1[which(tpc1$time>5 & tpc1$time<10),], aes(x = temp, y=gr, color = tim
   geom_point(alpha=0.4, position = position_jitterdodge()) +geom_smooth()
 
 #Model
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time*time.per*time.class*instar, random=~1|UniID, data = na.omit(tpc))
-anova(mod.lmer)
+#mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time*time.per*time.class*instar, random=~1|UniID, data = na.omit(tpc))
+#anova(mod.lmer)
 
 #plot feeding rate over time to assess time adjustments
 tpc.plot <- tpc[which(tpc$time>0),]
@@ -104,7 +104,7 @@ ggplot(tpc.plot, aes(x = time, y = gr, color = time.per)) + #y = mgain
 #Compare TPCs with two time classes
 
 #rgr or gr
-tpc.plot$grow= tpc.plot$rgrlog
+tpc.plot$grow= tpc.plot$gr
 
 #narrower and broader period comparisons
 tpc.agg <- tpc.plot %>%
@@ -170,8 +170,31 @@ tpc.comp.b$time.type<- "broad"
 tpc.comp<- rbind(tpc.comp.n, tpc.comp.b)
 
 #restrict to potential time limits
-mod= lm(rgrlog ~ Mo + poly(temp,3)*time.per*time.type, data= tpc.comp[which(tpc.comp$time.class.b==6 &tpc.comp$instar==4),]) 
-anova(mod)
+mod.lmer4 <- lme(grow ~ poly(temp,3)*time.per*Mo, random=~1|time.type/mom/ID, data = na.omit(tpc.comp[which(tpc.comp$time.class.b==6 &tpc.comp$instar==4),]))
+
+mod.lmer5 <- lme(grow ~ poly(temp,3)*time.per*Mo, random=~1|time.type/mom/ID, data = na.omit(tpc.comp[which(tpc.comp$time.class.b==6 &tpc.comp$instar==5),]))
+
+summary(mod.lmer4)
+anova(mod.lmer4)
+sigma(mod.lmer4)
+VarCorr(mod.lmer4)
+
+#----
+#Table S1
+
+#Save anova
+tablesS1<- rbind(as.data.frame(anova(mod.lmer4)), as.data.frame(anova(mod.lmer5)) )
+
+colnames(tablesS1)[3:4]<- c("F","p")
+tablesS1$sig<-""
+tablesS1$sig[tablesS1$p<0.05]<-"*"
+tablesS1$sig[tablesS1$p<0.01]<-"**"
+tablesS1$sig[tablesS1$p<0.001]<-"***"
+tablesS1$F= round(tablesS1$F,1)
+tablesS1$p= round(tablesS1$p,4)
+
+#Table S1
+write.csv(tablesS1, "./figures/tablesS1_time_window.csv")
 
 #------
 #plot data points

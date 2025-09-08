@@ -110,9 +110,29 @@ Fig2_growth.plot= rgr.plot +
 #rgr.plot= rgr.plot +
 #geom_line(data=tpc.agg.f, aes(x=temp, y = mean, group=mom), linewidth=1)
 
+#----
 #Model
-mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
-anova(mod.lmer)
+mod.lmer4 <- lme(gr ~ poly(temp,3)*time.per*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[tpc.plot$instar==4,]))
+anova(mod.lmer4)
+mod.lmer5 <- lme(gr ~ poly(temp,3)*time.per*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[tpc.plot$instar==5,]))
+anova(mod.lmer5)
+
+sigma(mod.lmer4)
+sigma(mod.lmer5)
+
+#Save anova
+tables2<- rbind(as.data.frame(anova(mod.lmer4)), as.data.frame(anova(mod.lmer5)) )
+
+colnames(tables2)[3:4]<- c("F","p")
+tables2$sig<-""
+tables2$sig[tables2$p<0.05]<-"*"
+tables2$sig[tables2$p<0.01]<-"**"
+tables2$sig[tables2$p<0.001]<-"***"
+tables2$F= round(tables2$F,1)
+tables2$p= round(tables2$p,4)
+
+#Table 2
+write.csv(tables2, "./figures/Tables2_comp_growth.csv")
 
 #----
 # #GAM
