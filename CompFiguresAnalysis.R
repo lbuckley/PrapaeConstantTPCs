@@ -62,8 +62,8 @@ tpc.plot$hr.lab <- hr.lab[match(tpc.plot$time.class, c(6,24))]
 tpc.plot$hr.lab <- factor(tpc.plot$hr.lab, levels=c("6 hour","24 hour"), ordered=TRUE)
 
 #rename time period
-tpc.plot$time.per <- c("initial","recent")[match(tpc.plot$time.per, c("past","current"))]
-tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("initial","recent"), ordered=TRUE)
+tpc.plot$time.per <- c("1999","2024")[match(tpc.plot$time.per, c("past","current"))]
+tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("1999","2024"), ordered=TRUE)
 
 #rgr or grow
 tpc.plot$grow= tpc.plot$rgrlog
@@ -103,7 +103,7 @@ Fig2_growth.plot= rgr.plot +
   geom_line(data=tpc.agg, aes(x=temp, y = mean))+
   theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
-  labs(color="Time period", fill="Time period")+theme(legend.position="bottom")
+  labs(color="Year", fill="Year")+theme(legend.position="bottom")
 
 #add family lines
 #not individuals at every temp
@@ -151,7 +151,7 @@ Fig3_rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, 
   facet_grid(.~ in.lab) +
   theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
-  labs(color="Time period", fill="Time period", lty="Time (hr)")+theme(legend.position="bottom")+
+  labs(color="Year", fill="Year", lty="Time (hr)")+theme(legend.position="bottom")+
   geom_hline(yintercept=0, col="darkgray")
 
 #plot 4th and 5th together
@@ -161,7 +161,7 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   facet_grid(hr.lab ~ .) +
   theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
-  labs(color="Time period", fill="Time period", lty="Instar")+
+  labs(color="Year", fill="Year", lty="Instar")+
   theme(legend.position="bottom")
 
 #-------
@@ -178,13 +178,13 @@ FigSx_mass.plot= ggplot(data=tpc.agg.mass, aes(x=time.class, y = mean.mass, colo
   geom_point(size=3)+
   theme_bw(base_size=16)+xlab("Time (h)")+ylab("Mass gain (mg)")+
   scale_color_viridis_d()+
-  labs(color="Temperature (°C)")+theme(legend.position="bottom")+
+  labs(color="Temperature (°C)", lty="Year")+theme(legend.position="bottom")+
   facet_wrap(.~in.lab, scales="free_y") +xlim(0,24)
 
 #----------------
 #distribution plots
-tpc$time.per <- c("initial","recent")[match(tpc$time.per, c("past","current"))]
-tpc$time.per <- factor(tpc$time.per, levels=c("initial","recent"), ordered=TRUE)
+tpc$time.per <- c("1999","2024")[match(tpc$time.per, c("past","current"))]
+tpc$time.per <- factor(tpc$time.per, levels=c("1999","2024"), ordered=TRUE)
 
 #initial weights
 Fig4_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
@@ -193,7 +193,7 @@ Fig4_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) +
   facet_wrap(.~in.lab, scales="free")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(2,6)])+
 theme_classic(base_size=16) +theme(legend.position = c(0.9, 0.8))+
-  labs(color="Time period", fill="Time period")
+  labs(color="Year", fill="Year")
 
 #compare distributions
 #compare variance

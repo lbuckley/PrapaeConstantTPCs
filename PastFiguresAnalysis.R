@@ -412,7 +412,7 @@ hr.plot.month<- ggplot(tave[which(tave$hours==24),], aes(x=value, y=factor(month
   theme_bw(base_size=18) +
   theme(legend.position = "bottom", legend.margin=margin())+
   xlab("Environmental temperature (°C)")+ylab("")+ ylab("Month")+
-  labs(color="Period", fill="Period", lty="Season") +
+  labs(color="Years", fill="Years", lty="Season") +
   xlim(5,30)
 
 #analysis
