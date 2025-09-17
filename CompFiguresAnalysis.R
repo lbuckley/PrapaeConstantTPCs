@@ -66,7 +66,8 @@ tpc.plot$time.per <- c("1999","2024")[match(tpc.plot$time.per, c("past","current
 tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("1999","2024"), ordered=TRUE)
 
 #relative growth rate
-tpc.plot$rgr=  tpc.plot$mgain/tpc.plot$Mo/tpc.plot$time
+tpc.plot$rgr=  (tpc.plot$fw/tpc.plot$Mo) / tpc.plot$time
+tpc.plot$rgr2=  tpc.plot$mgain/tpc.plot$Mo/tpc.plot$time
 #absolute growth rate
 tpc.plot$agr= tpc.plot$mgain/tpc.plot$time
 
@@ -75,7 +76,7 @@ plot(tpc.plot$gr, tpc.plot$agr) #gr is absolute growth rate
 
 #select growth rate
 #tpc.plot$grow= tpc.plot$rgrlog
-tpc.plot$grow= tpc.plot$gr
+tpc.plot$grow= tpc.plot$rgr
 #tpc.plot$grow= tpc.plot$mgain
 
 rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab)),], aes( x = temp, y = grow, color = time.per)) +
@@ -215,11 +216,11 @@ if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
 
 #save figures 
-pdf("./figures/Fig2_absolute_growthplot.pdf",height = 8, width = 8)
+pdf("./figures/Fig2_relative_growthplot.pdf",height = 8, width = 8)
 Fig2_growth.plot
 dev.off()
 
-pdf("./figures/Fig3_absolute_grtime.pdf",height = 6, width = 8)
+pdf("./figures/Fig3_relative_grtime.pdf",height = 6, width = 8)
 Fig3_rgrtime.plot
 dev.off()
 

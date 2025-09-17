@@ -56,7 +56,8 @@ tpc1$time.class<- factor(tpc1$time.class, levels=c(6, 24, 54, 80), ordered=TRUE)
 tpc1<- tpc1[-which(tpc1$time==0),]
 
 #relative growth rate
-tpc1$rgr=  tpc1$mgain/tpc1$Mo/tpc1$time
+tpc1$rgr=  (tpc1$fw/tpc1$Mo) / tpc1$time
+tpc1$rgr2=  tpc1$mgain/tpc1$Mo/tpc1$time
 #absolute growth rate
 tpc1$agr= tpc1$mgain/tpc1$time
 
@@ -65,7 +66,7 @@ plot(tpc1$gr, tpc1$agr) #gr is absolute growth rate
   
 #specify metric
 #tpc1$grow<- tpc1$rgrlog
-tpc1$grow<- tpc1$gr
+tpc1$grow<- tpc1$rgr
 
 #mean across time classes
 tpc.agg <- tpc1 %>%
@@ -458,7 +459,7 @@ design <- "AA
              CD"
 
 #save figure 
-pdf("./figures/Fig1_absolute_growth_rate.pdf",height = 10, width = 9)
+pdf("./figures/Fig1_relative_growth_rate.pdf",height = 10, width = 9)
 Fig1_mass.plot +Fig1_time.plot +plot_annotation(tag_levels = 'A')+ 
   plot_layout(ncol = 1)
 dev.off()
