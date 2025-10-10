@@ -76,8 +76,8 @@ plot(tpc.plot$gr, tpc.plot$agr) #gr is absolute growth rate
 
 #select growth rate
 #tpc.plot$grow= tpc.plot$rgrlog
-tpc.plot$grow= tpc.plot$rgr
-#tpc.plot$grow= tpc.plot$mgain
+#tpc.plot$grow= tpc.plot$rgr
+tpc.plot$grow= tpc.plot$gr
 
 rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab)),], aes( x = temp, y = grow, color = time.per)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) +
@@ -110,7 +110,7 @@ Fig2_growth.plot= rgr.plot +
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(data=tpc.agg, aes(x=temp, y = mean, fill=time.per), size=3, col="black", pch=21)+
   geom_line(data=tpc.agg, aes(x=temp, y = mean))+
-  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
+  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
   labs(color="Year", fill="Year")+theme(legend.position="bottom")
 
@@ -143,6 +143,10 @@ tables2$p= round(tables2$p,4)
 #Table 2
 write.csv(tables2, "./figures/Tables2_comp_growth.csv")
 
+#compare across instars for text
+mod.lmer45 <- lme(gr ~ poly(temp,3)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
+anova(mod.lmer45)
+
 #----
 # #GAM
 # mod.gam <- gam(rgrlog ~ Mo + 
@@ -158,7 +162,7 @@ Fig3_rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, 
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(size=2.5) + geom_line(linewidth=1.25)+
   facet_grid(.~ in.lab) +
-  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
+  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
   labs(color="Year", fill="Year", lty="Time (hr)")+theme(legend.position="bottom")+
   geom_hline(yintercept=0, col="darkgray")
@@ -168,7 +172,7 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(size=2) + geom_line()+
   facet_grid(hr.lab ~ .) +
-  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (g/g/h)")+
+  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
   labs(color="Year", fill="Year", lty="Instar")+
   theme(legend.position="bottom")
@@ -268,8 +272,11 @@ tpc.agg.garden <- tpc.l %>%
 tpc.agg.garden <- na.omit(tpc.agg.garden)
 #-------
 #add Quant gen data
-if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/PrapaeQuantGen/")
-if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/PrapaeQuantGen/")
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeQuantGen/")
+if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeQuantGen/")
+
+# if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/PrapaeQuantGen/")
+# if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/PrapaeQuantGen/")
 
 #load data
 tpc<- read.csv("data/TPC_quantgen_combined_RGR.csv")
@@ -308,10 +315,18 @@ tpc.all<- tpc.all[which(tpc.all$instar==4),]
 #just 24hr for constant TPC
 tpc.all<- tpc.all[-which(tpc.all$expt=="constant TPC" & tpc.all$time.class==6),]
 
+#align time periods
+tpc.all$period[which(tpc.all$period==1999)]<-"initial"
+tpc.all$period[which(tpc.all$period==2024)]<-"recent"
+
 #comparison plot
-ggplot(tpc.all, aes( x = temp, y = mean, color = expt, lty=period)) +
+comp.fig<- ggplot(tpc.all, aes( x = temp, y = mean, color = expt, lty=period)) +
   geom_point(alpha=0.4, position = position_jitterdodge()) +
   geom_line(linewidth=1.5) 
+
+pdf("./figures/Fig_compare_RGR.pdf",height = 6, width = 6)
+comp.fig
+dev.off()
 
 #similar, but garden increase at 23, decline at 35C recent
 #garden order: 23°C (7 hours), 11°C (15 hours overnight), 29°C (5 hours), 35°C (4 hours), and 17°C (15 hours overnight). 

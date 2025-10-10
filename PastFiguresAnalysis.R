@@ -65,8 +65,8 @@ plot(tpc1$rgr, tpc1$agr)
 plot(tpc1$gr, tpc1$agr) #gr is absolute growth rate
   
 #specify metric
-#tpc1$grow<- tpc1$rgrlog
-tpc1$grow<- tpc1$rgr
+tpc1$grow<- tpc1$rgrlog
+#tpc1$grow<- tpc1$rgr
 
 #mean across time classes
 tpc.agg <- tpc1 %>%

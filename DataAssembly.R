@@ -21,7 +21,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
@@ -134,7 +134,7 @@ tpc <- tpc %>% filter(active %in% c("y"))
 #paper plot matches log10 not ln
 #tpc$rgrlog= log10(tpc$fw/tpc$Mo)/tpc$time 
 #OR with conversion to mg: 
-tpc$rgrlog= (log10(tpc$fw*0.001)-log10(tpc$Mo*0.001))/tpc$time 
+tpc$rgrlog= (log10(tpc$fw)-log10(tpc$Mo))/tpc$time 
 
 # calculate relative growth rate using arithmetic scale 
 #tpc$rgrarith = (tpc$fw/tpc$Mo) / tpc$time 
