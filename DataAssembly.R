@@ -15,6 +15,7 @@ library(nlme)
 library(lme4)
 library(sjPlot)
 library(car)
+library(TrenchR)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
@@ -105,10 +106,15 @@ tpc.c$ID= tpc.c$Individual
 tpc.c$time.per = "current"
 tpc.c$Mo = tpc.c$M0
 
+#add doy of recent
+tpc.c$Jdate= gsub("May","5", tpc.c$Date)
+tpc.c$Jdate= gsub("Sep","9", tpc.c$Jdate)
+tpc.c$Jdate= day_of_year(tpc.c$Jdate, format = "%d-%m-%y")
+
 #----------
 #combine historic and current
-tpc.ps= tpc.p[,c("UniID","mom","ID","temp", "active","instar","time","duration","Mo","fw","time.per","mgain")]
-tpc.cs= tpc.c[,c("UniID","mom","ID","temp", "active","instar","time","duration","Mo","fw","time.per","mgain")]
+tpc.ps= tpc.p[,c("UniID","mom","ID","temp", "active","instar","time","duration","Mo","fw","time.per","mgain","Jdate")]
+tpc.cs= tpc.c[,c("UniID","mom","ID","temp", "active","instar","time","duration","Mo","fw","time.per","mgain","Jdate")]
 
 # Ensure data types match for both datasets before combining
 tpc.ps$mom <- as.character(tpc.ps$mom)

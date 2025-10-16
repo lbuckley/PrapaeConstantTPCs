@@ -237,7 +237,7 @@ pdf("./figures/FigSx_masstime.pdf",height = 6, width = 8)
 FigSx_mass.plot
 dev.off()
 
-#=====================
+#========================================================
 #Compare to garden TPCs
 
 #add garden data
@@ -339,6 +339,42 @@ rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab) & tpc.plot$time.per=="
   geom_point(alpha=0.4, position = position_jitterdodge()) +
   facet_grid(hr.lab ~ in.lab, scales="free_y") 
 
+#========================================================
+#Compare mass of all experiments through time 
 
+# TPC const
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
+
+tpc<- read.csv("out/PastPresentFilteredConstantTpc2024.csv")
+tpc$per<- "early"
+tpc$per[which(tpc$Jdate<252)]<-"late"
+
+ggplot(tpc, aes(x=Mo,color=per)) + 
+  geom_density(aes(fill=factor(per)), alpha=0.5)+
+  facet_wrap(time.per~instar, scales="free_x")
+
+#---------------
+#add garden data
+
+#toggle between desktop (y) and laptop (n)
+if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
+if(desktop=="n") setwd("/Users/lbuckley/Google Drive/Shared drives/TrEnCh/Projects/WARP/Projects/PrapaeGardenExpt/")
+
+#load data
+tpc<- read.csv("./data/PrapaeGardenExpt_WARP.csv")
+
+expts<- c("june","july","aug")
+expts.lab<- c("June 2024","July 2024","Aug 1999")
+
+#update experiment labels
+expts<- c("june","july","aug")
+expts.lab<- c("June 2024","July 2024","Aug 1999")
+
+tpc$expt <- expts.lab[match(tpc$expt,expts)]
+tpc$expt <- factor(tpc$expt, levels= c("Aug 1999","June 2024","July 2024"), ordered=TRUE)
+
+ggplot(tpc, aes(x=Mi,color=expt)) + 
+  geom_density(aes(fill=factor(expt)), alpha=0.5)
 
 
