@@ -50,10 +50,8 @@ tpc1$time.class[which(tpc1$time<90)]<- 80
 tpc1$time.class[which(tpc1$time<65)]<- 54
 tpc1$time.class[which(tpc1$time<40)]<- 24
 tpc1$time.class[which(tpc1$time<15)]<- 6
-tpc1$time.class<- factor(tpc1$time.class, levels=c(6, 24, 54, 80), ordered=TRUE)
-
-#remove 0 time
-tpc1<- tpc1[-which(tpc1$time==0),]
+tpc1$time.class[which(tpc1$time==0)]<- 0
+tpc1$time.class<- factor(tpc1$time.class, levels=c(0,6, 24, 54, 80), ordered=TRUE)
 
 #relative growth rate
 tpc1$rgr=  (tpc1$fw/tpc1$Mo) / tpc1$time
@@ -66,7 +64,7 @@ plot(tpc1$gr, tpc1$agr) #gr is absolute growth rate
   
 #specify metric
 tpc1$grow<- tpc1$rgrlog
-#tpc1$grow<- tpc1$rgr
+#tpc1$grow<- tpc1$agr
 
 #mean across time classes
 tpc.agg <- tpc1 %>%
@@ -91,27 +89,42 @@ tpc.agg$in.lab <- in.lab[match(tpc.agg$instar, c(4,5))]
 #plot
 tpc.agg$instar= factor(tpc.agg$instar)
 
+#code mortality
+tpc.agg$mortality<-0
+tpc.agg$mortality[which(tpc.agg$temp==41 & tpc.agg$instar==4 & tpc.agg$time.class==6)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==40 & tpc.agg$instar==4 & tpc.agg$time.class==24)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==17 & tpc.agg$instar==4 & tpc.agg$time.class==54)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==41 & tpc.agg$instar==5 & tpc.agg$time.class==6)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==40 & tpc.agg$instar==5 & tpc.agg$time.class==24)]<-1
+
+#A. Mass Plot
+Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
+  geom_point(aes(shape=factor(mortality)), size=2.7) + geom_line(linewidth = 1.3)+
+  geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+  facet_grid(. ~ in.lab) +
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  labs(color="Temperature (°C)")+scale_color_viridis_d(option="plasma")+scale_shape_manual(values=c(16,4))+
+  guides(shape="none")
+#+coord_trans(y = "log")
+
+#remove 0 time
+tpc.agg<- tpc.agg[-which(tpc.agg$time.class==0),]
+
+#B. growth plot
 Fig1_time.plot<- ggplot(tpc.agg, aes(x = temp, y = mean, color = time.class)) + 
-  geom_point() + geom_line()+
+  geom_point(size=2.7) + geom_line(linewidth = 1.3)+
   geom_errorbar(aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   facet_grid(. ~ in.lab) +
   theme_bw(base_size=18) +theme(legend.position = "bottom")+
-  xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/hr)")+
+  xlab("Temperature (°C)")+
+  ylab("Relative growth rate (log10 mg/mg/hr)")+
+  #ylab("Absolute growth rate (mg/hr)")+
   labs(color="Time (hr)")+scale_color_viridis_d()+
   xlim(11,41)
 
 tpc.agg$time.class <- as.numeric(as.character(tpc.agg$time.class))
 tpc.agg$time.temp<- paste(tpc.agg$time.class, tpc.agg$temp, sep="_")
-
-#Mass Plot
-Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
-  geom_point() + geom_line()+
-  geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
-  facet_grid(. ~ in.lab) +
-  theme_bw(base_size=18) +theme(legend.position = "bottom")+
-  xlab("Time (hr)")+ylab("Mass gain (mg)")+
-  labs(color="Temperature (°C)")+scale_color_viridis_d(option="turbo")
-  #+coord_trans(y = "log")
 
 #make time numeric
 tpc1$time.n <- as.numeric(tpc1$time.class)
@@ -245,11 +258,13 @@ tave$hours<- gsub("t","",tave$variable)
 tave$hours<- gsub("h","",tave$hours)
 tave$hours<- factor(tave$hours, levels=c(6,24,54,80), ordered=TRUE)
 
+#Fig 2A
 #plot distributions
 hr.plot.op<- ggplot(tave, aes(x=value, y=hours, color=factor(Year), fill=factor(Year) ))+
   geom_density_ridges(size=1.2, alpha=0.2)+
   scale_color_manual(values=cols2)+scale_fill_manual(values=cols2)+
-  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  theme_bw(base_size=18) +
+  theme(legend.position = "bottom", legend.margin=margin())+
   xlab("Operative temperature (°C)")+ylab("Time average (hr)")+
   labs(color="Year", fill="Year") + 
   xlim(5,30) #xlim(11,35)
@@ -270,7 +285,7 @@ tave$hours.n<- as.numeric(tave$hours)
 mod<- lm(value~Year*hours.n, data=tave)
 anova(mod)
 
-#------------------------
+#======================================
 #ENVI TEMPS
 
 #GHCND date
@@ -372,20 +387,21 @@ tave$hours<- gsub("h","",tave$hours)
 tave$hours<- factor(tave$hours, levels=c(6,24,54,80), ordered=TRUE)
 #tave$hours<- factor(tave$hours, levels=c(2,6,12,24,54,80), ordered=TRUE)
 
-#------
+#============================
+#Supplementary fig
 #plot distributions by season
-hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=factor(period), lty=season))+ 
+hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=factor(period) ))+
+  facet_wrap(.~season)+
   geom_density_ridges(size=1.2, alpha=0.2)+ #, fill=NA #, alpha=0.4
   #facet_wrap(.~season)+
   scale_color_manual(values=cols2)+ scale_fill_manual(values=cols2)+
   theme_bw(base_size=18) +
-  theme(legend.position = c(0.85, 0.91), legend.margin=margin(),
-        legend.background = element_rect(fill = "transparent") )+
-  #  theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin())+ #axis.title.y=element_blank(), 
-  xlab("")+ #xlab("Environmental temperature (°C)")+
+  #theme(legend.position = c(0.85, 0.91), legend.margin=margin(), legend.background = element_rect(fill = "transparent") )+
+  theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin())+ #axis.title.y=element_blank(), 
+  xlab("")+ xlab("Environmental temperature (°C)")+
   ylab("Time average (hr)")+ 
-  labs(color="Period", fill="Period", lty="Season") +
-  xlim(5,30)+ guides(fill="none", color="none")
+  labs(color="Years", fill="Years", lty="Season") +
+  xlim(5,30)#+ guides(fill="none", color="none")
 
 #analysis
 tave$hours.n<- as.numeric(tave$hours)
@@ -395,7 +411,7 @@ mod<- lm(value~period*hours.n, data=tave[tave$season=="summer",])
 summary(mod)
 anova(mod)
 
-#------
+#=======================
 #plot distributions by season length
 
 #repeat season data
@@ -415,8 +431,8 @@ hr.plot.sl<- ggplot(tave.sl, aes(x=value, y=hours, color=factor(period), fill=fa
   xlim(5,30)
 
 #------
+#Fig 2B
 #plot just 12hr by month
-
 hr.plot.month<- ggplot(tave[which(tave$hours==24),], aes(x=value, y=factor(month), color=factor(period), fill=factor(period)))+ 
   geom_density_ridges(size=1.2, alpha=0.2)+ #, fill=NA #, alpha=0.4
   #facet_wrap(.~seaslen)+
@@ -454,18 +470,22 @@ design <- "AA
             AA
             BB
             BB
-            CD
-            CD
-             CD"
+             BB"
 
 #save figure 
 pdf("./figures/Fig1_relative_growth_rate.pdf",height = 10, width = 9)
+#pdf("./figures/FigS1_absolute_growth_rate.pdf",height = 10, width = 9)
 Fig1_mass.plot +Fig1_time.plot +plot_annotation(tag_levels = 'A')+ 
   plot_layout(ncol = 1)
 dev.off()
 
-pdf("./figures/Fig1_temp.pdf",height = 12, width = 6)
-hr.plot.op +hr.plot.ws +hr.plot.month +plot_annotation(tag_levels = 'A')+ plot_layout(ncol = 1)
+pdf("./figures/Fig2_temp.pdf",height = 10, width = 6)
+hr.plot.op +hr.plot.month +plot_annotation(tag_levels = 'A')+ plot_layout(design=design)
+dev.off()
+
+#supplementary fig
+pdf("./figures/FigS1_SeasonTemp.pdf",height = 8, width = 8)
+hr.plot.ws
 dev.off()
 
 #------------

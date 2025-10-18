@@ -68,6 +68,7 @@ tpc.plot$time.per <- factor(tpc.plot$time.per, levels=c("1999","2024"), ordered=
 #relative growth rate
 tpc.plot$rgr=  (tpc.plot$fw/tpc.plot$Mo) / tpc.plot$time
 tpc.plot$rgr2=  tpc.plot$mgain/tpc.plot$Mo/tpc.plot$time
+
 #absolute growth rate
 tpc.plot$agr= tpc.plot$mgain/tpc.plot$time
 
@@ -75,12 +76,14 @@ plot(tpc.plot$rgr, tpc.plot$agr)
 plot(tpc.plot$gr, tpc.plot$agr) #gr is absolute growth rate
 
 #select growth rate
-#tpc.plot$grow= tpc.plot$rgrlog
-#tpc.plot$grow= tpc.plot$rgr
-tpc.plot$grow= tpc.plot$gr
+tpc.plot$grow= tpc.plot$rgrlog
+#tpc.plot$grow= tpc.plot$agr
 
 rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab)),], aes( x = temp, y = grow, color = time.per)) +
-  geom_point(alpha=0.4, position = position_jitterdodge()) +
+  geom_point(alpha=0.4, 
+             position = position_jitterdodge(jitter.width = 5,
+                                             jitter.height = 0,
+                                             dodge.width = 0.75)) +
   facet_grid(hr.lab ~ in.lab, scales="free_y") 
 
 #tpc.plot[which(tpc.plot$temp==41 & tpc.plot$time.per=="recent" & tpc.plot$instar==4),]
@@ -106,13 +109,18 @@ tpc.agg.mass<- tpc.agg
 tpc.agg<- tpc.agg[which(!is.na(tpc.agg$hr.lab)),]
 
 #plotting temp means with error bars
-Fig2_growth.plot= rgr.plot + 
+Fig4A_growth.plot= rgr.plot + 
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(data=tpc.agg, aes(x=temp, y = mean, fill=time.per), size=3, col="black", pch=21)+
   geom_line(data=tpc.agg, aes(x=temp, y = mean))+
-  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/h)")+
+  theme_bw(base_size=16)+
+  ylab("Relative growth rate (RGR, log10 mg/mg/h)")+ 
+  #ylab("Absolute growth rate (AGR, mg/h)")+
+  xlab("Temperature (°C)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
-  labs(color="Year", fill="Year")+theme(legend.position="bottom")
+  labs(color="Year", fill="Year")+theme(legend.position="none")+
+  ylim(-0.015, 0.06)+
+  geom_hline(yintercept=0, col="darkgray")
 
 #add family lines
 #not individuals at every temp
@@ -158,11 +166,13 @@ anova(mod.lmer45)
 
 #-------
 #plot time periods together
-Fig3_rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(time.class))) +
+Fig4B_rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(time.class))) +
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(size=2.5) + geom_line(linewidth=1.25)+
   facet_grid(.~ in.lab) +
-  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/h)")+
+  theme_bw(base_size=16)+xlab("Temperature (°C)")+
+  #ylab("RGR (log10 mg/mg/h)")+
+  ylab("AGR (mg/h)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
   labs(color="Year", fill="Year", lty="Time (hr)")+theme(legend.position="bottom")+
   geom_hline(yintercept=0, col="darkgray")
@@ -190,7 +200,7 @@ FigSx_mass.plot= ggplot(data=tpc.agg.mass, aes(x=time.class, y = mean.mass, colo
   geom_errorbar(data=tpc.agg.mass, aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   geom_point(size=3)+
   theme_bw(base_size=16)+xlab("Time (h)")+ylab("Mass gain (mg)")+
-  scale_color_viridis_d()+
+  scale_color_viridis_d(option="plasma")+
   labs(color="Temperature (°C)", lty="Year")+theme(legend.position="bottom")+
   facet_wrap(.~in.lab, scales="free_y") +xlim(0,24)
 
@@ -200,12 +210,12 @@ tpc$time.per <- c("1999","2024")[match(tpc$time.per, c("past","current"))]
 tpc$time.per <- factor(tpc$time.per, levels=c("1999","2024"), ordered=TRUE)
 
 #initial weights
-Fig4_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
+Fig3_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
   geom_density(aes(fill=time.per), alpha=0.5, adjust=1.8)+
   ylab("Density") +xlab("Mass (mg)")+
   facet_wrap(.~in.lab, scales="free")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(2,6)])+
-theme_classic(base_size=16) +theme(legend.position = c(0.9, 0.8))+
+theme_bw(base_size=16) +theme(legend.position = c(0.9, 0.8))+
   labs(color="Year", fill="Year")
 
 #compare distributions
@@ -220,20 +230,25 @@ if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/")
 
 #save figures 
-pdf("./figures/Fig2_relative_growthplot.pdf",height = 8, width = 8)
-Fig2_growth.plot
+pdf("./figures/Fig3_mass.pdf",height = 6, width = 8)
+Fig3_plot.mass
 dev.off()
 
-pdf("./figures/Fig3_relative_grtime.pdf",height = 6, width = 8)
-Fig3_rgrtime.plot
-dev.off()
+design <- "AA
+            AA
+            AA
+            AA
+            BB
+             BB"
 
-pdf("./figures/Fig4_mass.pdf",height = 6, width = 8)
-Fig4_plot.mass
+pdf("./figures/Fig4_relative_growthplot.pdf",height = 10, width = 7)
+#pdf("./figures/FigS3_absolute_growthplot.pdf",height = 10, width = 7)
+Fig4A_growth.plot + Fig4B_rgrtime.plot +
+  plot_layout(design=design)+plot_annotation(tag_levels = 'A')
 dev.off()
 
 #supplementary mass plot
-pdf("./figures/FigSx_masstime.pdf",height = 6, width = 8)
+pdf("./figures/FigS4_masstime.pdf",height = 6, width = 8)
 FigSx_mass.plot
 dev.off()
 
