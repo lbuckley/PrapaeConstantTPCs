@@ -46,6 +46,22 @@ tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
 # ggplot(tpc.ch, aes( x = time, y = rgrlog, color = time.class))+
 #   geom_point()+xlim(0,10)
 
+fams<- unique(paste(tpc.plot$mom, tpc.plot$ID  ))
+
+#family counts
+tpc.agg<- tpc.plot 
+tpc.agg2 <- tpc.agg %>%
+  group_by(temp, time.per, time.class, instar, hr.lab, in.lab, mom) %>% 
+  dplyr::summarise(
+    n= length(grow)
+   )
+
+tpc.agg2 <- tpc.agg %>%
+  group_by(temp, time.per, time.class, instar, hr.lab, in.lab) %>% 
+  dplyr::summarise(
+    n= length(grow)
+  )
+
 #---------------------
 #PLOT
 #Figure 2
