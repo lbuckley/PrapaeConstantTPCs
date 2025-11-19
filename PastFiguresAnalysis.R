@@ -502,8 +502,3 @@ summary(mod1)
 anova(mod1, test="Chisq")
 
 
-
-
-
-
-

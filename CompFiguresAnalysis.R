@@ -46,26 +46,9 @@ tpc$time.class[which(tpc$time>21.5 & tpc$time<26)]<-24
 # ggplot(tpc.ch, aes( x = time, y = rgrlog, color = time.class))+
 #   geom_point()+xlim(0,10)
 
-fams<- unique(paste(tpc.plot$mom, tpc.plot$ID  ))
+fams<- unique(paste(tpc$mom, tpc$ID  ))
 
-#family counts
-tpc.agg<- tpc.plot 
-tpc.agg2 <- tpc.agg %>%
-  group_by(temp, time.per, time.class, instar, hr.lab, in.lab, mom) %>% 
-  dplyr::summarise(
-    n= length(grow)
-   )
-
-tpc.agg2 <- tpc.agg %>%
-  group_by(temp, time.per, time.class, instar, hr.lab, in.lab) %>% 
-  dplyr::summarise(
-    n= length(grow)
-  )
-
-#---------------------
-#PLOT
-#Figure 2
-
+#---
 #plot temperature sensitivity
 tpc.plot <- tpc
 #tpc.plot <- tpc[which(!is.na(tpc$time.class)),]
@@ -94,6 +77,24 @@ plot(tpc.plot$gr, tpc.plot$agr) #gr is absolute growth rate
 #select growth rate
 tpc.plot$grow= tpc.plot$rgrlog
 #tpc.plot$grow= tpc.plot$agr
+
+#family counts
+tpc.agg<- tpc.plot 
+tpc.agg2 <- tpc.agg %>%
+  group_by(temp, time.per, time.class, instar, in.lab, mom, hr.lab) %>% 
+  dplyr::summarise(
+    n= length(grow)
+   )
+
+tpc.agg2 <- tpc.agg %>%
+  group_by(temp, time.per, time.class, instar, in.lab, hr.lab) %>% 
+  dplyr::summarise(
+    n= length(grow)
+  )
+
+#---------------------
+#PLOT
+#Figure 2
 
 rgr.plot <- ggplot(tpc.plot[which(!is.na(tpc.plot$hr.lab)),], aes( x = temp, y = grow, color = time.per)) +
   geom_point(alpha=0.4, 
@@ -267,6 +268,32 @@ dev.off()
 pdf("./figures/FigS4_masstime.pdf",height = 6, width = 8)
 FigSx_mass.plot
 dev.off()
+
+#------------
+#Analysis by dates
+
+tpc.plot$doy.group <- NA
+#1999: 209-228; 249-251; 298-308; 349-354
+#2024: 122-137; 253-270
+tpc.plot$doy.group[tpc.plot$Jdate %in% c(122:137)] <- 130
+tpc.plot$doy.group[tpc.plot$Jdate %in% c(209:228)] <- 220
+tpc.plot$doy.group[tpc.plot$Jdate %in% c(249:251)] <- 250
+tpc.plot$doy.group[tpc.plot$Jdate %in% c(253:270)] <- 260
+tpc.plot$doy.group[tpc.plot$Jdate %in% c(298:308)] <- 304
+tpc.plot$doy.group[tpc.plot$Jdate %in% c(349:354)] <- 350
+
+#factor(Jdate)
+
+doy.plot <- ggplot(tpc.plot[which(tpc.plot$time.per==2024),], aes( x = temp, y = grow, color = factor(doy.group))) +
+  geom_point(alpha=0.2, 
+             position = position_jitterdodge(jitter.width = 7,
+                                             jitter.height = 0,
+                                             dodge.width = 0.75)) +
+  facet_grid(hr.lab ~ in.lab, scales="free_y") 
+
+#model with date
+mod.lmer5 <- lme(gr ~ poly(temp,3)*Jdate*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[which(tpc.plot$instar==5 & tpc.plot$time.per==2024),]))
+anova(mod.lmer5)
 
 #========================================================
 #Compare to garden TPCs
