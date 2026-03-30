@@ -237,9 +237,13 @@ theme_bw(base_size=16) +theme(legend.position = c(0.9, 0.8))+
 
 #compare distributions
 #compare variance
-leveneTest(Mo ~ time.per, tpc[tpc$instar==4,])
+leveneTest(Mo ~ time.per, tpc[tpc$instar==5,])
 #compare means
-t.test(Mo ~ time.per, data=tpc[tpc$instar==4,], alternative = "two.sided", var.equal = FALSE)
+t.test(Mo ~ time.per, data=tpc[tpc$instar==5,], alternative = "two.sided", var.equal = FALSE)
+#unequal variance using Welch modification to the degrees of freedom
+
+#Wilcoxon Rank Sum Tests
+wilcox.test(Mo ~ time.per, data=tpc[tpc$instar==5,], alternative = "two.sided")
 
 #------------
 #write out plots

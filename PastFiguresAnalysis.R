@@ -17,6 +17,7 @@ library(ggridges)
 library(zoo)
 library(TrenchR)
 library(mgcv)
+library(coin)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
@@ -280,10 +281,15 @@ tpc.agg$hours <- tpc.agg$time.class
 #   #facet
 #   facet_wrap(.~hours, scales="free_y")
 
-#analysis
-tave$hours.n<- as.numeric(tave$hours)
-mod<- lm(value~Year*hours.n, data=tave)
-anova(mod)
+#analysis: compare means of distributions
+t.test(value ~ Year, data=tave[tave$hours==24,], alternative = "two.sided", var.equal = FALSE)
+#unequal variance using Welch modification to the degrees of freedom, 
+
+#permutation-based conditional independence test
+res<- independence_test(value ~ hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$Year==2024,])
+res<- independence_test(value ~ Year+hours, teststat="quadratic", alternative = "two.sided", data = tave)
+res
+statistic(res) #χ²
 
 #======================================
 #ENVI TEMPS
@@ -388,7 +394,7 @@ tave$hours<- factor(tave$hours, levels=c(6,24,54,80), ordered=TRUE)
 #tave$hours<- factor(tave$hours, levels=c(2,6,12,24,54,80), ordered=TRUE)
 
 #============================
-#Supplementary fig
+#Supplementary fig 2
 #plot distributions by season
 hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=factor(period) ))+
   facet_wrap(.~season)+
@@ -405,11 +411,21 @@ hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=facto
 
 #analysis
 tave$hours.n<- as.numeric(tave$hours)
-#mod<- lm(value~period*hours.n*season, data=tave)
-#mod<- lm(value~period*hours.n, data=tave[tave$season=="spring",])
-mod<- lm(value~period*hours.n, data=tave[tave$season=="summer",])
-summary(mod)
-anova(mod)
+
+#analysis: compare means of distributions
+t.test(value ~ period, data=tave[tave$hours==24 &tave$season=="spring",], alternative = "two.sided", var.equal = FALSE)
+#unequal variance using Welch modification to the degrees of freedom, 
+
+#permutation-based conditional independence test
+#non-parametric Kruskal-Wallis-type test
+res<- independence_test(value ~ hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="spring" & tave$period=="2015-2024",])
+res<- independence_test(value ~ hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="summer" & tave$period=="2015-2024",])
+
+res<- independence_test(value ~ factor(period)+hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="spring",])
+res<- independence_test(value ~ factor(period)+hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="summer",])
+res
+statistic(res) #χ²
+
 
 #=======================
 #plot distributions by season length
