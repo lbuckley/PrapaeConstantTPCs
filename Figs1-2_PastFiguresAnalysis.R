@@ -1,0 +1,503 @@
+#Past feeding and temp data
+
+# Load required libraries 
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(patchwork)
+library(reshape2)
+library(viridis)
+library(tidyverse)
+library(lubridate)
+library(nlme)
+library(lme4)
+library(sjPlot)
+library(car)
+library(ggridges)
+library(zoo)
+library(TrenchR)
+library(mgcv)
+library(coin)
+
+colm<- viridis_pal(option = "mako")(8)
+cols<- colm[c(2,4,7)]
+cols2<- colm[c(3,6)]
+
+#load data
+tpc<- read.csv("data/PastPresentFilteredConstantTpc2024.csv")
+
+#==========================
+#INITIAL DATA
+
+#rgr by time
+#4th and 5th instar
+
+tpc1<- tpc[which(tpc$time.per=="past"),]
+#restrict to less that 55 hours
+#tpc1<- tpc1[which(tpc1$time<55),]
+
+#time classes
+ggplot(tpc1, aes(x = time)) + geom_density()
+
+#set up time classes
+tpc1$time.class<- NA
+tpc1$time.class[which(tpc1$time<90)]<- 80
+tpc1$time.class[which(tpc1$time<65)]<- 54
+tpc1$time.class[which(tpc1$time<40)]<- 24
+tpc1$time.class[which(tpc1$time<15)]<- 6
+tpc1$time.class[which(tpc1$time==0)]<- 0
+tpc1$time.class<- factor(tpc1$time.class, levels=c(0,6, 24, 54, 80), ordered=TRUE)
+
+#relative growth rate
+tpc1$rgr=  (tpc1$fw/tpc1$Mo) / tpc1$time
+tpc1$rgr2=  tpc1$mgain/tpc1$Mo/tpc1$time
+#absolute growth rate
+tpc1$agr= tpc1$mgain/tpc1$time
+
+plot(tpc1$rgr, tpc1$agr)
+plot(tpc1$gr, tpc1$agr) #gr is absolute growth rate
+  
+#specify metric
+tpc1$grow<- tpc1$rgrlog
+#tpc1$grow<- tpc1$agr
+
+#mean across time classes
+tpc.agg <- tpc1 %>%
+  group_by(temp, time.per, time.class, instar) %>% 
+  dplyr::summarise(
+    mean = mean(grow, na.rm = TRUE),
+    n= length(grow),
+    sd = sd(grow, na.rm = TRUE),
+    mean.mass = mean(fw-Mo, na.rm = TRUE),
+    sd.mass = sd(fw-Mo, na.rm = TRUE)
+    )
+tpc.agg$se= tpc.agg$sd / sqrt(tpc.agg$n)
+tpc.agg$se.mass= tpc.agg$sd.mass / sqrt(tpc.agg$n)
+
+#restrict to points with 6 measurements
+tpc.agg<- tpc.agg[-which(tpc.agg$n<6),]
+
+#instar label
+in.lab<- c("4th instar", "5th instar")
+tpc.agg$in.lab <- in.lab[match(tpc.agg$instar, c(4,5))]
+
+#plot
+tpc.agg$instar= factor(tpc.agg$instar)
+
+#code mortality
+tpc.agg$mortality<-0
+tpc.agg$mortality[which(tpc.agg$temp==41 & tpc.agg$instar==4 & tpc.agg$time.class==6)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==40 & tpc.agg$instar==4 & tpc.agg$time.class==24)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==17 & tpc.agg$instar==4 & tpc.agg$time.class==54)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==41 & tpc.agg$instar==5 & tpc.agg$time.class==6)]<-1
+tpc.agg$mortality[which(tpc.agg$temp==40 & tpc.agg$instar==5 & tpc.agg$time.class==24)]<-1
+
+#A. Mass Plot
+Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
+  geom_point(aes(shape=factor(mortality)), size=2.7) + geom_line(linewidth = 1.3)+
+  geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+  facet_grid(. ~ in.lab) +
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  labs(color="Temperature (°C)")+scale_color_viridis_d(option="plasma")+scale_shape_manual(values=c(16,4))+
+  guides(shape="none")
+#+coord_trans(y = "log")
+
+#remove 0 time
+tpc.agg<- tpc.agg[-which(tpc.agg$time.class==0),]
+
+#B. growth plot
+Fig1_time.plot<- ggplot(tpc.agg, aes(x = temp, y = mean, color = time.class)) + 
+  geom_point(size=2.7) + geom_line(linewidth = 1.3)+
+  geom_errorbar(aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
+  facet_grid(. ~ in.lab) +
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Temperature (°C)")+
+  ylab("Relative growth rate (log10 mg/mg/hr)")+
+  #ylab("Absolute growth rate (mg/hr)")+
+  labs(color="Time (hr)")+scale_color_viridis_d()+
+  xlim(11,41)
+
+tpc.agg$time.class <- as.numeric(as.character(tpc.agg$time.class))
+tpc.agg$time.temp<- paste(tpc.agg$time.class, tpc.agg$temp, sep="_")
+
+#make time numeric
+tpc1$time.n <- as.numeric(tpc1$time.class)
+
+#model
+mod= lm(gr ~ Mo + poly(temp,3)*time.class*instar, data= tpc1) 
+#by instar
+mod= lm(gr ~ Mo + poly(temp,3)*time.class, data= tpc1[tpc1$instar==5,]) 
+anova(mod)
+
+plot_model(mod, type = "pred", terms = c("time.class", "temp"), show.data=TRUE)
+
+#Table 1
+#lme: issues accounting for individual ~1|UniID
+#mod.lmer <- lme(rgrlog ~ Mo + poly(temp,3)*time.class*instar, random=~1|mom/ID, data = na.omit(tpc1))
+#anova(mod.lmer)
+
+#growth rate by instar
+mod.lmer4 <- lme(gr ~ poly(temp,3)*time.n*Mo, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==4,]))
+summary(mod.lmer4)
+anova(mod.lmer4)
+#4th: time.n            -0.00292623 0.000242389
+#5th: time.n            -0.00305272 0.000212852
+
+mod.lmer5 <- lme(gr ~ poly(temp,3)*time.n*Mo, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==5,]))
+
+sigma(mod.lmer4)
+sigma(mod.lmer5)
+#standard deviations of the random effects
+VarCorr(mod.lmer4)
+
+#Save anova
+tables1<- rbind(as.data.frame(anova(mod.lmer4)), as.data.frame(anova(mod.lmer5)) )
+
+colnames(tables1)[3:4]<- c("F","p")
+tables1$sig<-""
+tables1$sig[tables1$p<0.05]<-"*"
+tables1$sig[tables1$p<0.01]<-"**"
+tables1$sig[tables1$p<0.001]<-"***"
+tables1$F= round(tables1$F,1)
+tables1$p= round(tables1$p,4)
+
+#Table 1
+#write.csv(tables1, "figures/Tables1_past_growth.csv")
+
+#----------------
+
+#GAM
+# mod.gam <- gam(rgrlog ~ Mo + 
+#                  s(temp, bs = "cr", k=5, by = interaction(time.class, instar))+
+#                time.class*instar, #+s(UniID, bs = "re"),                               # Random intercept
+#                data = na.omit(tpc1),
+#                method = "REML")
+# summary(mod.gam)
+
+#Kingsolver et al. notes
+#Because growth during the 5th instar is approximately isometric (rather than allometric or exponential) we modeled mass on an arithmetic (rather than log) scale
+
+#Time 0-24h of the 5th instar for all test temperatures, Period 2 represents Time 24-48h or Time 30-54h depending on the test temperature, and Period 3 
+
+#We used linear mixed-effects models (function lme in R library nlme) to analyze larval mass (m). We considered time (t) and test temperature (T) as fixed effects; time was modeled as a 2nd order (P. rapae)
+#Individual was included as a random (intercept) effect in the model.
+
+#==================================================
+#TEMP ANALYSIS
+
+#OPERATIVE TEMPS
+tdat<- read.csv("data/PrapaeGardenTemps_WARP.csv")
+
+#drop 2024 air temperature
+tdat<- tdat[-which(tdat$T=="Logger3.T4.shadedT"),]
+
+#doy
+tdat$doy= floor(tdat$dt)
+
+#average across sensors
+tdat.mean <- tdat %>%
+  group_by(dt, Date, Time, Year, hr, doy) %>%
+  summarise(Tmean = mean(value, na.rm = TRUE), n=length(value))
+
+#hourly max, min
+tdat.mean.hr <- tdat.mean %>%
+  group_by(Date, hr, Year, doy) %>%
+  summarise(Tmin = min(Tmean, na.rm = TRUE), Tmax = max(Tmean, na.rm = TRUE), Tmean = mean(Tmean, na.rm = TRUE), n=length(Tmean), .groups = 'drop')
+
+#check dates
+#c(unique(tdat.mean.hr[which(tdat.mean.hr$Year==2023),"doy"]))
+#1997: 224-238
+#1999: 209-217, 227-237
+#2023: 190-202, 212-226
+#2024: 173-240
+
+#restrict to overlapping time periods 227-237
+tdat<- tdat.mean.hr[which(tdat.mean.hr$doy %in% c(227:237)), ]
+#just 1999 and 2024
+tdat<- tdat[which(tdat$Year %in% c(1999,2024)), ]
+
+#order by time
+tdat<- tdat[order(tdat$Year, tdat$doy, tdat$hr), ]
+
+#-----
+#running average across time periods
+
+# Calculate running averages for different time windows
+tave <- tdat %>%
+  # Calculate rolling means for different windows
+  mutate(
+    ## 2-hour rolling average
+    #t2h = rollmean(Tmean, k = 2, fill = NA, align = "right"),
+    # 6-hour rolling average
+    t6h = rollmean(Tmean, k = 6, fill = NA, align = "right"),
+    ## 12-hour rolling average
+    #t12h = rollmean(Tmean, k = 12, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t24h = rollmean(Tmean, k = 24, fill = NA, align = "right"),
+    # 12-hour rolling average
+    t54h = rollmean(Tmean, k = 54, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t80h = rollmean(Tmean, k = 80, fill = NA, align = "right")
+  )
+
+#to long format
+tave<- na.omit(melt(tave[,c("hr","Year","doy","t6h", "t24h","t54h","t80h")], id.vars=c("hr","Year","doy")))
+
+#define time window
+tave$hours<- gsub("t","",tave$variable)
+tave$hours<- gsub("h","",tave$hours)
+tave$hours<- factor(tave$hours, levels=c(6,24,54,80), ordered=TRUE)
+
+#Fig 2A
+#plot distributions
+hr.plot.op<- ggplot(tave, aes(x=value, y=hours, color=factor(Year), fill=factor(Year) ))+
+  geom_density_ridges(size=1.2, alpha=0.2)+
+  scale_color_manual(values=cols2)+scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +
+  theme(legend.position = "bottom", legend.margin=margin())+
+  xlab("Operative temperature (°C)")+ylab("Time average (hr)")+
+  labs(color="Year", fill="Year") + 
+  xlim(5,30) #xlim(11,35)
+
+tpc.agg$hours <- tpc.agg$time.class
+
+# #plot distributions with tpcs on top
+# ttplot<- ggplot()+
+#   #add densities
+#   geom_density(data= tave, aes(x=value, color=factor(Year), fill=factor(Year)))+
+#   #add lines
+#   geom_line(data= tpc.agg[which(tpc.agg$instar==5),], aes(x=temp, y=mean*10, color=factor(Year), group=hours))+
+#   #facet
+#   facet_wrap(.~hours, scales="free_y")
+
+#analysis: compare means of distributions
+t.test(value ~ Year, data=tave[tave$hours==24,], alternative = "two.sided", var.equal = FALSE)
+#unequal variance using Welch modification to the degrees of freedom, 
+
+#permutation-based conditional independence test
+res<- independence_test(value ~ hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$Year==2024,])
+res<- independence_test(value ~ Year+hours, teststat="quadratic", alternative = "two.sided", data = tave)
+res
+statistic(res) #χ²
+
+#======================================
+#ENVI TEMPS
+
+#GHCND date
+#find stations: https://ncics.org/portfolio/monitor/ghcn-d-station-data/ 
+# SEATTLE SAND POINT WEATHER FORECAST OFFICE, WA US (USW00094290)
+t.dat<- read.csv("data/GHCNdata/USW00094290_2025.csv")
+t.dat$site="Seattle"
+
+t.dat$tmin= t.dat$TMIN /10 #divide by ten
+t.dat$tmax= t.dat$TMAX /10
+
+t.dat$month= round(month(as.POSIXlt(t.dat$DATE)))
+t.dat$year= year(as.POSIXlt(t.dat$DATE))
+#restrict to growing season
+t.dat= t.dat[which(t.dat$month %in% c(4,5,6,7,8,9)),] 
+
+#dtr over time
+t.dat$dtr<- t.dat$tmax-t.dat$tmin
+t.dtr <- t.dat %>%
+  group_by(year) %>% 
+  dplyr::summarise(dtrm = mean(dtr, na.rm = TRUE))
+  
+ggplot(t.dtr, aes(x=year, y=dtrm))+geom_line()+geom_smooth(method="lm") 
+    
+#-------
+
+#code season
+t.dat$season<- NA
+t.dat$season[which(t.dat$month %in% c(4:6))] ="spring"
+t.dat$season[which(t.dat$month %in% c(7:9))] ="summer"
+
+#restrict years
+t.dat= t.dat[which(t.dat$year %in% c(1990:2024)),]
+t.dat1= t.dat[which(t.dat$year %in% c(1990:1999)),]
+t.dat1$period="1990-1999"
+t.dat2= t.dat[which(t.dat$year %in% c(2015:2024)),] 
+t.dat2$period="2015-2024"
+#combine
+t.dat= rbind(t.dat1,t.dat2)
+
+#dtr
+dtr=function(x, t=1:24){
+  T_max= x[1]
+  T_min= x[2]
+  gamma= 0.44 - 0.46* sin(0.9 + pi/12 * t)+ 0.11 * sin(0.9 + 2 * pi/12 * t);   # (2.2) diurnal temperature function
+  T = T_max*gamma + T_min - T_min*gamma
+  return(T)
+}
+
+#hourly
+temps=apply(t.dat[,c("tmax","tmin")], FUN="dtr", MARGIN=1)
+temps= as.data.frame(t(temps))
+temps$period= t.dat$period
+temps$site= t.dat$site
+temps$season= t.dat$season
+temps$month= t.dat$month
+temps$date= t.dat$DATE
+temps$year= t.dat$year
+#add season lengths
+temps$seaslen= "both"
+temps$seaslen[temps$month %in% c(4,5,9)]= "Jun-Aug"
+
+#to long format
+colnames(temps)[1:24]=1:24
+thr<- na.omit(melt(temps, id.vars=c("period","site","month","date","season","seaslen","year"), value.name ="Tmean",variable.name = "hr"))
+
+#order by time
+thr<- thr[order(thr$date, thr$hr), ]
+
+#-----------------
+# Calculate running averages for different time windows
+tave <- thr %>%
+  # Calculate rolling means for different windows
+  mutate(
+    ## 2-hour rolling average
+    #t2h = rollmean(Tmean, k = 2, fill = NA, align = "right"),
+    # 6-hour rolling average
+    t6h = rollmean(Tmean, k = 6, fill = NA, align = "right"),
+    ## 12-hour rolling average
+    #t12h = rollmean(Tmean, k = 12, fill = NA, align = "right"),
+    # 24-hour rolling average
+    t24h = rollmean(Tmean, k = 24, fill = NA, align = "right"),
+    # 54-hour rolling average
+    t54h = rollmean(Tmean, k = 54, fill = NA, align = "right"),
+    # 80-hour rolling average
+    t80h = rollmean(Tmean, k = 80, fill = NA, align = "right")
+  )
+
+#to long format
+tave<- na.omit(melt(tave[,c("period","hr","season","seaslen","month","year","t6h", "t24h","t54h","t80h")], id.vars=c("hr","period","season","seaslen","month","year")))
+
+#define time window
+tave$hours<- gsub("t","",tave$variable)
+tave$hours<- gsub("h","",tave$hours)
+tave$hours<- factor(tave$hours, levels=c(6,24,54,80), ordered=TRUE)
+#tave$hours<- factor(tave$hours, levels=c(2,6,12,24,54,80), ordered=TRUE)
+
+#============================
+#Supplementary fig 2
+#plot distributions by season
+hr.plot.ws<- ggplot(tave, aes(x=value, y=hours, color=factor(period), fill=factor(period) ))+
+  facet_wrap(.~season)+
+  geom_density_ridges(size=1.2, alpha=0.2)+ #, fill=NA #, alpha=0.4
+  #facet_wrap(.~season)+
+  scale_color_manual(values=cols2)+ scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +
+  #theme(legend.position = c(0.85, 0.91), legend.margin=margin(), legend.background = element_rect(fill = "transparent") )+
+  theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin())+ #axis.title.y=element_blank(), 
+  xlab("")+ xlab("Environmental temperature (°C)")+
+  ylab("Time average (hr)")+ 
+  labs(color="Years", fill="Years", lty="Season") +
+  xlim(5,30)#+ guides(fill="none", color="none")
+
+#analysis
+tave$hours.n<- as.numeric(tave$hours)
+
+#analysis: compare means of distributions
+t.test(value ~ period, data=tave[tave$hours==24 &tave$season=="spring",], alternative = "two.sided", var.equal = FALSE)
+#unequal variance using Welch modification to the degrees of freedom, 
+
+#permutation-based conditional independence test
+#non-parametric Kruskal-Wallis-type test
+res<- independence_test(value ~ hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="spring" & tave$period=="2015-2024",])
+res<- independence_test(value ~ hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="summer" & tave$period=="2015-2024",])
+
+res<- independence_test(value ~ factor(period)+hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="spring",])
+res<- independence_test(value ~ factor(period)+hours, teststat="quadratic", alternative = "two.sided", data = tave[tave$season=="summer",])
+res
+statistic(res) #χ²
+
+
+#=======================
+#plot distributions by season length
+
+#repeat season data
+tave.s<- tave[which(tave$seaslen=="Jun-Aug"),]
+tave.l<-tave
+tave.l$seaslen<- "Apr-Sep"
+tave.sl<- rbind(tave.s, tave.l)
+
+hr.plot.sl<- ggplot(tave.sl, aes(x=value, y=hours, color=factor(period), fill=factor(period), lty=seaslen))+ 
+  geom_density_ridges(size=1.2, alpha=0.2)+ #, fill=NA #, alpha=0.4
+  #facet_wrap(.~seaslen)+
+  scale_color_manual(values=cols2)+ scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +
+  theme(legend.position = "bottom", axis.title.y=element_blank(), legend.box="vertical", legend.margin=margin())+
+  xlab("Environmental temperature (°C)")+ylab("")+ #ylab("Time average (hr)")+
+  labs(color="Period", fill="Period", lty="Season") +
+  xlim(5,30)
+
+#------
+#Fig 2B
+#plot just 12hr by month
+hr.plot.month<- ggplot(tave[which(tave$hours==24),], aes(x=value, y=factor(month), color=factor(period), fill=factor(period)))+ 
+  geom_density_ridges(size=1.2, alpha=0.2)+ #, fill=NA #, alpha=0.4
+  #facet_wrap(.~seaslen)+
+  scale_color_manual(values=cols2)+ scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +
+  theme(legend.position = "bottom", legend.margin=margin())+
+  xlab("Environmental temperature (°C)")+ylab("")+ ylab("Month")+
+  labs(color="Years", fill="Years", lty="Season") +
+  xlim(5,30)
+
+#analysis
+mod<- lm(value~period*month, data=tave)
+summary(mod)
+anova(mod)
+
+#------
+#seasonal plot by year
+
+hr.plot.yr<- ggplot(tave[which(tave$hours==24),], aes(x=value, y=factor(year), color=factor(period), fill=factor(period), lty=season))+ 
+  geom_density_ridges(size=1.2, alpha=0.2)+ #, fill=NA #, alpha=0.4
+  #facet_wrap(.~seaslen)+
+  scale_color_manual(values=cols2)+ scale_fill_manual(values=cols2)+
+  theme_bw(base_size=18) +
+  theme(legend.position = "bottom", legend.margin=margin())+
+  xlab("Environmental temperature (°C)")+ylab("")+ ylab("Month")+
+  labs(color="Period", fill="Period", lty="Season") +
+  xlim(5,30)
+#------------
+#write out plot
+
+design <- "AA
+            AA
+            BB
+            BB
+             BB"
+
+#save figure 
+pdf("figures/Fig1_relative_growth_rate.pdf",height = 10, width = 9)
+#pdf("figures/FigS1_absolute_growth_rate.pdf",height = 10, width = 9)
+Fig1_mass.plot +Fig1_time.plot +plot_annotation(tag_levels = 'A')+ 
+  plot_layout(ncol = 1)
+dev.off()
+
+pdf("figures/Fig2_temp.pdf",height = 10, width = 6)
+hr.plot.op +hr.plot.month +plot_annotation(tag_levels = 'A')+ plot_layout(design=design)
+dev.off()
+
+#supplementary fig
+pdf("figures/FigS1_SeasonTemp.pdf",height = 8, width = 8)
+hr.plot.ws
+dev.off()
+
+#------------
+#Test increasing incidence of warm temperatures
+#make variable whether temperature hot
+mod1<- lm(value~hours*period, data=tave)
+
+tave$o30<- 0
+tave$o30[tave$value>=30]<- 1
+
+mod1 <- glm(o30~hours*period*season, family=binomial, data=tave) 
+
+summary(mod1)
+anova(mod1, test="Chisq")
+
+
