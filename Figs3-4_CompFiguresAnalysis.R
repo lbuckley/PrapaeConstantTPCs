@@ -14,6 +14,7 @@ library(lme4)
 library(sjPlot)
 library(car)
 library(mgcv)
+library(ggeffects)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
@@ -72,17 +73,65 @@ tpc.plot$grow= tpc.plot$rgrlog
 
 #family counts
 tpc.agg<- tpc.plot 
-tpc.agg2 <- tpc.agg %>%
-  group_by(temp, time.per, time.class, instar, in.lab, mom, hr.lab) %>% 
-  dplyr::summarise(
-    n= length(grow)
-   )
+
+n_families <- tpc.agg %>%
+  group_by(time.per, instar, in.lab) %>%
+  summarise(n_moms = n_distinct(mom), .groups = "drop")
+# 1999: 24 4th and 21 5th moms
+# 2024: 40 4th and 37 5th moms
+
+n_ind <- tpc.agg %>%
+  group_by(time.per, instar, in.lab) %>%
+  summarise(n_ind = n_distinct(UniID), .groups = "drop")
+# 1999: 106 4th and 127 5th ind
+# 2024: 800 4th and 561 5th ind
+
+#dates
+n_doy <- tpc.agg[tpc.agg$time.class==6,] %>%
+  group_by(time.per, instar, in.lab, Jdate) %>%
+  summarise(doy = unique(Jdate))
+
+n_doy[n_doy$time.per==2024 & n_doy$instar==5,]$doy
+
+# 1999: 4th Aug-Sep on 216, 224, 225, 249; 5th Nov-Dec on 298, 300, 305, 349, 351 
+# 2024: 4th on 122 (May 2) 123 135 253 254 255 263 264 265 266; 5th on 123 129 135 136 254 255 256 264 265 266 268 269
+#some May, mostly Sept
+
+#range number of individuals per family
+range_ind <- tpc.agg %>%
+  group_by(time.per, instar, in.lab, temp, mom) %>%
+  summarise(n_ind = n_distinct(UniID), 
+            .groups = "drop")
+
+range_ind <- range_ind %>%
+  group_by(time.per) %>%
+  summarise(mean_ind= mean(n_ind),
+            med_ind= median(n_ind),
+            min_ind= min(n_ind),
+            max_ind= max(n_ind),
+            .groups = "drop")            
+
+#per treatment
+range_ind <- tpc.agg %>%
+  group_by(time.per, instar, in.lab, temp) %>%
+  summarise(n_ind = n_distinct(UniID), 
+            .groups = "drop")
+
+range_ind <- range_ind %>%
+  group_by(time.per) %>%
+  summarise(mean_ind= mean(n_ind),
+            med_ind= median(n_ind),
+            min_ind= min(n_ind),
+            max_ind= max(n_ind),
+            .groups = "drop")   
 
 tpc.agg2 <- tpc.agg %>%
   group_by(temp, time.per, time.class, instar, in.lab, hr.lab) %>% 
   dplyr::summarise(
     n= length(grow)
   )
+
+#sample sizes per family and treatment, perhaps in a supplementary table.
 
 #---------------------
 #PLOT
@@ -146,6 +195,14 @@ anova(mod.lmer5)
 sigma(mod.lmer4)
 sigma(mod.lmer5)
 
+# Plot effects to examine interactions
+preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo","time.per"))
+preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "time.class", "Mo"))
+
+preds <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "time.per"))
+
+plot(preds)
+
 #Save anova
 tables2<- rbind(as.data.frame(anova(mod.lmer4)), as.data.frame(anova(mod.lmer5)) )
 
@@ -163,6 +220,11 @@ write.csv(tables2, "figures/Tables2_comp_growth.csv")
 #compare across instars for text
 mod.lmer45 <- lme(gr ~ poly(temp,3)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
 anova(mod.lmer45)
+
+#plot effects
+preds <- ggpredict(mod.lmer45, terms = c("temp [all]", "time.per","time.class"))
+preds <- ggpredict(mod.lmer45, terms = c("temp [all]", "time.per","instar"))
+plot(preds)
 
 #-------
 #plot time periods together
@@ -187,6 +249,39 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   labs(color="Year", fill="Year", lty="Instar")+
   theme(legend.position="bottom")
 
+plot_model(rgr45.plot, type = "pred", terms = c("grow_t6hour","Mo"))
+
+#--------
+#Growth at 6 vs 24 hrs
+
+tpc_wide<- tpc.plot[!is.na(tpc.plot$hr.lab),]
+#subtract one from 24hr measures
+tpc_wide$hr.lab<- gsub(" ","",tpc_wide$hr.lab)
+tpc_wide[tpc_wide$hr.lab=="24hour","Jdate"]<- tpc_wide[tpc_wide$hr.lab=="24hour","Jdate"]-1
+
+
+tpc_wide <- tpc_wide %>%
+  pivot_wider(
+    id_cols = c(UniID, mom, ID, Jdate, Mo, temp, time.per, instar, in.lab),
+    names_from  = hr.lab,
+    values_from = grow,
+    names_prefix = "grow_t"
+  )
+
+rel.rgr.plot <- ggplot(tpc_wide[tpc_wide$instar==4,], aes( x = grow_t6hour, y = grow_t24hour, color = Mo)) +
+  geom_point(alpha=0.4) +
+  facet_grid(time.per ~ ., scales="free_y") +
+  scale_color_viridis()
+
+#check role of initial mass
+mod.lmer4 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data = na.omit(tpc_wide[tpc_wide$instar==4,]))
+anova(mod.lmer4)
+
+mod.lmer5 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data = na.omit(tpc_wide[tpc_wide$instar==5,]))
+anova(mod.lmer5)
+
+plot_model(mod.lmer4, type = "pred", terms = c("grow_t6hour","Mo"))
+
 #-------
 #Mass Plot 
 tpc.agg.mass$per.temp<- paste(tpc.agg.mass$time.per, tpc.agg.mass$temp, sep="_")
@@ -205,7 +300,7 @@ FigS4_mass.plot= ggplot(data=tpc.agg.mass, aes(x=time.class, y = mean.mass, colo
   facet_wrap(.~in.lab, scales="free_y") +xlim(0,24)
 
 #----------------
-#Figure 3. distribution plots
+#Figure 3. mass distribution plots
 tpc$time.per <- c("1999","2024")[match(tpc$time.per, c("past","current"))]
 tpc$time.per <- factor(tpc$time.per, levels=c("1999","2024"), ordered=TRUE)
 
@@ -227,6 +322,19 @@ t.test(Mo ~ time.per, data=tpc[tpc$instar==5,], alternative = "two.sided", var.e
 
 #Wilcoxon Rank Sum Tests
 wilcox.test(Mo ~ time.per, data=tpc[tpc$instar==5,], alternative = "two.sided")
+
+#models accounting for family
+#add Jdate
+mass.lmer4 <- lme(Mo ~ time.per, random=~1|mom/ID, data=tpc[tpc$instar==4,])
+anova(mass.lmer4)
+
+mass.lmer5 <- lme(Mo ~ time.per, random=~1|mom/ID, data=tpc[tpc$instar==5,])
+anova(mass.lmer5)
+
+sigma(mod.lmer4)
+sigma(mod.lmer5)
+
+#plot_model(mass.lmer5, type = "pred", terms = c("time.per", "Jdate"))
 
 #------------
 #write out plots
@@ -276,3 +384,7 @@ doy.plot <- ggplot(tpc.plot[which(tpc.plot$time.per==2024),], aes( x = temp, y =
 #model with date
 mod.lmer5 <- lme(gr ~ poly(temp,3)*Jdate*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[which(tpc.plot$instar==5 & tpc.plot$time.per==2024),]))
 anova(mod.lmer5)
+
+# Generate predictions at representative Jdate values
+preds <- ggpredict(mod.lmer5, terms = c("temp [all]", "Jdate [meansd]","time.class"))
+plot(preds)
