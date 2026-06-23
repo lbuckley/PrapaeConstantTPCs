@@ -198,8 +198,13 @@ sigma(mod.lmer5)
 # Plot effects to examine interactions
 preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo","time.per"))
 preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "time.class", "Mo"))
+preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo"))
+preds <- ggpredict(mod.lmer4, terms = c("Mo [all]","time.per"))
+
 
 preds <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "time.per"))
+preds <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "Mo"))
+preds <- ggpredict(mod.lmer5, terms = c("Mo [all]","time.per"))
 
 plot(preds)
 
