@@ -256,37 +256,6 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
 
 plot_model(rgr45.plot, type = "pred", terms = c("grow_t6hour","Mo"))
 
-#--------
-#Growth at 6 vs 24 hrs
-
-tpc_wide<- tpc.plot[!is.na(tpc.plot$hr.lab),]
-#subtract one from 24hr measures
-tpc_wide$hr.lab<- gsub(" ","",tpc_wide$hr.lab)
-tpc_wide[tpc_wide$hr.lab=="24hour","Jdate"]<- tpc_wide[tpc_wide$hr.lab=="24hour","Jdate"]-1
-
-
-tpc_wide <- tpc_wide %>%
-  pivot_wider(
-    id_cols = c(UniID, mom, ID, Jdate, Mo, temp, time.per, instar, in.lab),
-    names_from  = hr.lab,
-    values_from = grow,
-    names_prefix = "grow_t"
-  )
-
-rel.rgr.plot <- ggplot(tpc_wide[tpc_wide$instar==4,], aes( x = grow_t6hour, y = grow_t24hour, color = Mo)) +
-  geom_point(alpha=0.4) +
-  facet_grid(time.per ~ ., scales="free_y") +
-  scale_color_viridis()
-
-#check role of initial mass
-mod.lmer4 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data = na.omit(tpc_wide[tpc_wide$instar==4,]))
-anova(mod.lmer4)
-
-mod.lmer5 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data = na.omit(tpc_wide[tpc_wide$instar==5,]))
-anova(mod.lmer5)
-
-plot_model(mod.lmer4, type = "pred", terms = c("grow_t6hour","Mo"))
-
 #-------
 #Mass Plot 
 tpc.agg.mass$per.temp<- paste(tpc.agg.mass$time.per, tpc.agg.mass$temp, sep="_")
@@ -318,6 +287,19 @@ Fig3_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) +
 theme_bw(base_size=16) +theme(legend.position = c(0.9, 0.8))+
   labs(color="Year", fill="Year")
 
+#---
+#Plot as box plots
+
+Fig3A_plot.mass<- ggplot(tpc, aes(x=time.per, y=Mo,color=time.per, group=time.per)) + 
+  geom_boxplot()+
+#  geom_density(aes(fill=time.per), alpha=0.5, adjust=1.8)+
+  ylab("Mass (mg)") +xlab("Year")+
+  facet_grid(in.lab~., scales="free", switch = "y")+
+  scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(2,6)])+
+  theme_bw(base_size=16) +theme(legend.position = c(0.7, 0.8))+
+  theme(legend.position = "none")
+
+#--------
 #compare distributions
 #compare variance
 leveneTest(Mo ~ time.per, tpc[tpc$instar==5,])
@@ -341,11 +323,65 @@ sigma(mod.lmer5)
 
 #plot_model(mass.lmer5, type = "pred", terms = c("time.per", "Jdate"))
 
+#--------
+#Growth at 6 vs 24 hrs
+#Check role of mass
+
+tpc_wide<- tpc.plot[!is.na(tpc.plot$hr.lab),]
+#subtract one from 24hr measures
+tpc_wide$hr.lab<- gsub(" ","",tpc_wide$hr.lab)
+tpc_wide[tpc_wide$hr.lab=="24hour","Jdate"]<- tpc_wide[tpc_wide$hr.lab=="24hour","Jdate"]-1
+
+
+tpc_wide <- tpc_wide %>%
+  pivot_wider(
+    id_cols = c(UniID, mom, ID, Jdate, Mo, temp, time.per, instar, in.lab),
+    names_from  = hr.lab,
+    values_from = grow,
+    names_prefix = "grow_t"
+  )
+
+# [tpc_wide$instar==4,]
+Fig3B_plot.rgrmass_4th <- ggplot(tpc_wide[tpc_wide$instar==4,], aes( x = grow_t6hour, y = grow_t24hour, fill = Mo, color=time.per)) +
+  geom_point(shape=21, alpha=0.4, size=3, stroke = 0.7) +
+  #facet_grid(in.lab ~ ., scales="free_y") +
+  scale_fill_viridis_c()+
+  scale_color_manual(values=cols2)+
+  ylab("24 hour Growth rate") +xlab("6 hour Growth rate (mg/mg/h)")+
+  theme_bw(base_size=16) + #theme(legend.position = c(0.7, 0.8))+
+  labs(fill="Mass (mg)", color="Year")+ #+xlim(-0.01, 0.07)+ylim(-0.01, 0.07)
+  geom_abline(color="darkgray") #+annotate("text", label = "4th instar", x = -0.002, y = 0.035)
+
+Fig3B_plot.rgrmass_5th <- ggplot(tpc_wide[tpc_wide$instar==5,], aes( x = grow_t6hour, y = grow_t24hour, fill = Mo, color=time.per)) +
+  geom_point(shape=21, alpha=0.4, size=3, stroke = 0.7) +
+  #facet_grid(in.lab ~ ., scales="free_y") +
+  scale_fill_viridis_c()+
+  scale_color_manual(values=cols2)+
+  ylab("24 hour Growth rate") +xlab("6 hour Growth rate (mg/mg/h)")+
+  theme_bw(base_size=16) + #theme(legend.position = c(0.7, 0.8))+
+  labs(fill="Mass (mg)", color="Year")+ #+xlim(-0.01, 0.07)+ylim(-0.01, 0.07)
+  geom_abline(color="darkgray")+ #+annotate("text", label = "5th instar", x = -0.005, y = 0.028)+
+  guides(color = "none")
+
+#check role of initial mass
+mod.lmer4 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data = na.omit(tpc_wide[tpc_wide$instar==4,]))
+anova(mod.lmer4)
+
+mod.lmer5 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data = na.omit(tpc_wide[tpc_wide$instar==5,]))
+anova(mod.lmer5)
+
+plot_model(mod.lmer4, type = "pred", terms = c("grow_t6hour","Mo"))
+
 #------------
 #write out plots
 #save figures 
-pdf("figures/Fig3_mass.pdf",height = 6, width = 8)
-Fig3_plot.mass
+
+design <- "AABB
+            AACC"
+
+pdf("figures/Fig3_mass.pdf",height = 8, width = 10)
+Fig3A_plot.mass +Fig3B_plot.rgrmass_4th +Fig3B_plot.rgrmass_5th+
+  plot_layout(design=design)+plot_annotation(tag_levels = 'A')
 dev.off()
 
 design <- "AA
@@ -393,3 +429,39 @@ anova(mod.lmer5)
 # Generate predictions at representative Jdate values
 preds <- ggpredict(mod.lmer5, terms = c("temp [all]", "Jdate [meansd]","time.class"))
 plot(preds)
+
+#------------
+#Plot as in Kingsolver 2000 PBZ, growth rate (g/g/h) 
+
+tpc.plot$rgr=  (tpc.plot$fw/tpc.plot$Mo) / tpc.plot$time
+
+#plot temp means
+tpc.agg2<- tpc.plot #[which(!is.na(tpc.plot$time.class)),]
+tpc.agg2 <- tpc.agg2 %>%
+  group_by(temp, time.per, time.class, instar, hr.lab, in.lab) %>% 
+  dplyr::summarise(
+    mean = mean(rgr, na.rm = TRUE),
+    n= length(rgr),
+    sd = sd(rgr, na.rm = TRUE),
+    mean.mass = mean(fw-Mo, na.rm = TRUE),
+    sd.mass = sd(fw-Mo, na.rm = TRUE) )
+
+tpc.agg2$se= tpc.agg2$sd / sqrt(tpc.agg2$n)
+tpc.agg2$se.mass= tpc.agg2$sd.mass / sqrt(tpc.agg2$n)
+
+#restrict to points 
+tpc.agg2<- tpc.agg2[which(tpc.agg2$n>5),]
+tpc.agg2<- tpc.agg[which(!is.na(tpc.agg2$hr.lab)),]
+
+#plot 4th and 5th together
+rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(instar))) +
+  geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
+  geom_point(size=2) + geom_line()+
+  facet_grid(hr.lab ~ .) +
+  theme_bw(base_size=16)+xlab("Temperature (°C)")+ylab("Growth rate (mg/mg/h)")+
+  scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
+  labs(color="Year", fill="Year", lty="Instar")+
+  theme(legend.position="bottom")
+
+
+

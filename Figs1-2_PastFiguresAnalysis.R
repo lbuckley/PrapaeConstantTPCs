@@ -49,8 +49,8 @@ tpc1$time.class[which(tpc1$time==0)]<- 0
 tpc1$time.class<- factor(tpc1$time.class, levels=c(0,6, 24, 54, 80), ordered=TRUE)
 
 #relative growth rate
-tpc1$rgr=  (tpc1$fw/tpc1$Mo) / tpc1$time
-tpc1$rgr2=  tpc1$mgain/tpc1$Mo/tpc1$time
+#tpc1$rgr=  (tpc1$fw/tpc1$Mo) / tpc1$time
+tpc1$rgr=  tpc1$mgain/tpc1$Mo/tpc1$time
 #absolute growth rate
 tpc1$agr= tpc1$mgain/tpc1$time
 
