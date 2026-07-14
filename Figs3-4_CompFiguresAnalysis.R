@@ -325,7 +325,7 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   labs(color="Year", fill="Year", lty="Instar")+
   theme(legend.position="bottom")
 
-plot_model(rgr45.plot, type = "pred", terms = c("grow_t6hour","Mo"))
+#plot_model(rgr45.plot, type = "pred", terms = c("grow_t6hour","Mo"))
 
 #-------
 #Mass Plot 
@@ -362,7 +362,7 @@ theme_bw(base_size=16) +theme(legend.position = c(0.9, 0.8))+
 #Plot as box plots
 
 Fig3A_plot.mass<- ggplot(tpc, aes(x=time.per, y=Mo,color=time.per, group=time.per)) + 
-  geom_boxplot()+
+  geom_violin(quantile.linetype="solid")+
 #  geom_density(aes(fill=time.per), alpha=0.5, adjust=1.8)+
   ylab("Mass (mg)") +xlab("Year")+
   facet_grid(in.lab~., scales="free", switch = "y")+
@@ -423,6 +423,9 @@ tpc_wide <- tpc_wide %>%
     values_from = grow,
     names_prefix = "grow_t"
   )
+
+#just intermediate temperatures
+tpc_wide<- tpc_wide[tpc_wide$temp %in% c(17, 23, 29, 35),]
 
 # [tpc_wide$instar==4,]
 Fig3B_plot.rgrmass_4th <- ggplot(tpc_wide[tpc_wide$instar==4,], aes( x = grow_t6hour, y = grow_t24hour, fill = Mo, color=time.per)) +
@@ -485,9 +488,9 @@ Fig4A_growth.plot + Fig4B_rgrtime.plot +
 dev.off()
 
 #supplementary mass plot
-pdf("figures/FigS4_masstime.pdf",height = 6, width = 8)
-FigSx_mass.plot
-dev.off()
+#pdf("figures/FigS4_masstime.pdf",height = 6, width = 8)
+#FigSx_mass.plot
+#dev.off()
 
 #supplementary effect plot
 pdf("figures/FigSx_model4th.pdf",height = 10, width = 10)
