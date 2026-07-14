@@ -46,6 +46,7 @@ tpc1$time.class[which(tpc1$time<65)]<- 54
 tpc1$time.class[which(tpc1$time<40)]<- 24
 tpc1$time.class[which(tpc1$time<15)]<- 6
 tpc1$time.class[which(tpc1$time==0)]<- 0
+tpc1$time.class.num<- tpc1$time.class
 tpc1$time.class<- factor(tpc1$time.class, levels=c(0,6, 24, 54, 80), ordered=TRUE)
 
 #relative growth rate
@@ -63,7 +64,7 @@ tpc1$grow<- tpc1$rgrlog
 
 #mean across time classes
 tpc.agg <- tpc1 %>%
-  group_by(temp, time.per, time.class, instar) %>% 
+  group_by(temp, time.per, time.class, time.class.num, instar) %>% 
   dplyr::summarise(
     mean = mean(grow, na.rm = TRUE),
     n= length(grow),
@@ -93,7 +94,7 @@ tpc.agg$mortality[which(tpc.agg$temp==41 & tpc.agg$instar==5 & tpc.agg$time.clas
 tpc.agg$mortality[which(tpc.agg$temp==40 & tpc.agg$instar==5 & tpc.agg$time.class==24)]<-1
 
 #A. Mass Plot
-Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
+Fig1_mass.plot.class<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
   geom_point(aes(shape=factor(mortality)), size=2.7) + geom_line(linewidth = 1.3)+
   geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   facet_grid(. ~ in.lab) +
@@ -102,6 +103,16 @@ Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color = fact
   labs(color="Temperature (°C)")+scale_color_viridis_d(option="plasma")+scale_shape_manual(values=c(16,4))+
   guides(shape="none")
 #+coord_trans(y = "log")
+
+#linear scale
+Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class.num, y = mean.mass, color = factor(temp), group=factor(temp) )) + 
+  geom_point(aes(shape=factor(mortality)), size=2.7) + geom_line(linewidth = 1.3)+
+  geom_errorbar(aes(x=time.class.num, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
+  facet_grid(. ~ in.lab) +
+  theme_bw(base_size=18) +theme(legend.position = "bottom")+
+  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  labs(color="Temperature (°C)")+scale_color_viridis_d(option="plasma")+scale_shape_manual(values=c(16,4))+
+  guides(shape="none")
 
 #remove 0 time
 tpc.agg<- tpc.agg[-which(tpc.agg$time.class==0),]

@@ -196,18 +196,89 @@ sigma(mod.lmer4)
 sigma(mod.lmer5)
 
 # Plot effects to examine interactions
-preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo","time.per"))
-preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "time.class", "Mo"))
-preds <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo"))
-preds <- ggpredict(mod.lmer4, terms = c("Mo [all]","time.per"))
+preds1 <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo","time.per"))
+preds2 <- ggpredict(mod.lmer4, terms = c("temp [all]", "time.class", "Mo"))
+preds3 <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo"))
+preds4 <- ggpredict(mod.lmer4, terms = c("Mo [all]","time.per"))
 
 
-preds <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "time.per"))
-preds <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "Mo"))
-preds <- ggpredict(mod.lmer5, terms = c("Mo [all]","time.per"))
+preds5.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "time.per"))
+preds2.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "Mo"))
+preds4.5 <- ggpredict(mod.lmer5, terms = c("Mo [all]","time.per"))
 
-plot(preds)
+#4th instar
+plot.eff1<- plot(preds1) +
+  labs(
+    title  = "Interaction of temperature, mass, and year",
+    x      = "Temperature (°C)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Initial mass (mg)"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d()
 
+plot.eff2<- plot(preds2) +
+  labs(
+    title  = "Interaction of temperature, mass, and duration",
+    x      = "Temperature (°C)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Duration (h)"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d() #option = "turbo"
+
+plot.eff3<- plot(preds3) +
+  labs(
+    title  = "Interaction of temperature and mass",
+    x      = "Temperature (°C)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Initial mass (mg)"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d()
+
+plot.eff4<- plot(preds4) +
+  labs(
+    title  = "Interaction of mass and year",
+    x      = "Initial mass (mg)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Year"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d()
+
+#5th instar
+plot.eff5.5<- plot(preds5.5) +
+  labs(
+    title  = "Interaction of temperature, duration, and year",
+    x      = "Temperature (°C)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Duration (h)"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d()
+
+plot.eff2.5<- plot(preds2.5) +
+  labs(
+    title  = "Interaction of temperature, mass, and duration",
+    x      = "Temperature (°C)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Duration (h)"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d() #option = "turbo"
+
+plot.eff4.5<- plot(preds4.5) +
+  labs(
+    title  = "Interaction of mass and year",
+    x      = "Initial mass (mg)",
+    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    colour = "Year"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d()
+
+#-----------
 #Save anova
 tables2<- rbind(as.data.frame(anova(mod.lmer4)), as.data.frame(anova(mod.lmer5)) )
 
@@ -279,7 +350,7 @@ tpc$time.per <- c("1999","2024")[match(tpc$time.per, c("past","current"))]
 tpc$time.per <- factor(tpc$time.per, levels=c("1999","2024"), ordered=TRUE)
 
 #initial weights
-Fig3_plot.mass<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
+Fig3_plot.mass.dist<- ggplot(tpc, aes(x=Mo,color=time.per, group=time.per)) + 
   geom_density(aes(fill=time.per), alpha=0.5, adjust=1.8)+
   ylab("Density") +xlab("Mass (mg)")+
   facet_wrap(.~in.lab, scales="free")+
@@ -299,6 +370,18 @@ Fig3A_plot.mass<- ggplot(tpc, aes(x=time.per, y=Mo,color=time.per, group=time.pe
   theme_bw(base_size=16) +theme(legend.position = c(0.7, 0.8))+
   theme(legend.position = "none")
 
+#means and percent change
+tpc %>%
+  group_by(time.per, instar) %>%
+  summarise(mean_value = mean(Mo, na.rm = TRUE),
+            sd_value   = sd(Mo, na.rm = TRUE),
+            n          = sum(!is.na(Mo)),
+            se_value   = sd_value / sqrt(n),
+            .groups    = "drop"
+            )
+
+round((1-11.9/12.9)*100, 1)
+round((1-48.1/49.2)*100, 1)
 #--------
 #compare distributions
 #compare variance
@@ -344,7 +427,7 @@ tpc_wide <- tpc_wide %>%
 # [tpc_wide$instar==4,]
 Fig3B_plot.rgrmass_4th <- ggplot(tpc_wide[tpc_wide$instar==4,], aes( x = grow_t6hour, y = grow_t24hour, fill = Mo, color=time.per)) +
   geom_point(shape=21, alpha=0.4, size=3, stroke = 0.7) +
-  #facet_grid(in.lab ~ ., scales="free_y") +
+  #facet_grid(temp ~ ., scales="free_y") +
   scale_fill_viridis_c()+
   scale_color_manual(values=cols2)+
   ylab("24 hour Growth rate") +xlab("6 hour Growth rate (mg/mg/h)")+
@@ -371,6 +454,10 @@ mod.lmer5 <- lme(grow_t24hour ~ grow_t6hour*time.per*Mo, random=~1|mom/ID, data 
 anova(mod.lmer5)
 
 plot_model(mod.lmer4, type = "pred", terms = c("grow_t6hour","Mo"))
+
+#correlations
+cor(tpc_wide[tpc_wide$instar==4,]$grow_t6hour, tpc_wide[tpc_wide$instar==4,]$grow_t24hour, use="complete.obs")
+cor(tpc_wide[tpc_wide$instar==5,]$grow_t6hour, tpc_wide[tpc_wide$instar==5,]$grow_t24hour, use="complete.obs")
 
 #------------
 #write out plots
@@ -400,6 +487,15 @@ dev.off()
 #supplementary mass plot
 pdf("figures/FigS4_masstime.pdf",height = 6, width = 8)
 FigSx_mass.plot
+dev.off()
+
+#supplementary effect plot
+pdf("figures/FigSx_model4th.pdf",height = 10, width = 10)
+plot.eff1 +plot.eff2 +plot.eff3 +plot.eff4
+dev.off()
+
+pdf("figures/FigSx_model5th.pdf",height = 10, width = 10)
+plot.eff2.5 / (plot.eff5.5 +plot.eff4.5)
 dev.off()
 
 #------------
@@ -463,5 +559,7 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   labs(color="Year", fill="Year", lty="Instar")+
   theme(legend.position="bottom")
 
-
+pdf("figures/FigSx_ComparePBZ2000.pdf",height = 10, width = 10)
+plot.eff2.5 / (plot.eff5.5 +plot.eff4.5)
+dev.off()
 
