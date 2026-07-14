@@ -562,7 +562,7 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
   labs(color="Year", fill="Year", lty="Instar")+
   theme(legend.position="bottom")
 
-pdf("figures/FigSx_ComparePBZ2000.pdf",height = 10, width = 10)
-plot.eff2.5 / (plot.eff5.5 +plot.eff4.5)
+pdf("figures/FigSx_ComparePBZ2000.pdf",height = 6, width = 6)
+rgr45.plot
 dev.off()
 
