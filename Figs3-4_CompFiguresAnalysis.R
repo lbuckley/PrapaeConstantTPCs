@@ -15,6 +15,7 @@ library(sjPlot)
 library(car)
 library(mgcv)
 library(ggeffects)
+library(MuMIn)
 
 colm<- viridis_pal(option = "mako")(8)
 cols<- colm[c(2,4,7)]
@@ -199,6 +200,11 @@ anova(mod.lmer5)
 sigma(mod.lmer4)
 sigma(mod.lmer5)
 
+r.squaredGLMM(mod.lmer4)
+VarCorr(mod.lmer4)
+r.squaredGLMM(mod.lmer5)
+VarCorr(mod.lmer5)
+
 # Plot effects to examine interactions
 preds1 <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo","time.per"))
 preds2 <- ggpredict(mod.lmer4, terms = c("temp [all]", "time.class", "Mo"))
@@ -206,11 +212,14 @@ preds3 <- ggpredict(mod.lmer4, terms = c("temp [all]", "Mo"))
 preds4 <- ggpredict(mod.lmer4, terms = c("Mo [all]","time.per"))
 
 
-preds5.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "time.per"))
+preds1.5 <- ggpredict(mod.lmer5, terms = c("temp [all]", "Mo","time.per"))
 preds2.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "Mo"))
 preds4.5 <- ggpredict(mod.lmer5, terms = c("Mo [all]","time.per"))
+preds6.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.per"))
 
 ylabel<- ifelse(grow.metric=="rgr", "Predicted relative growth rate (RGR, log10 mg/mg/h)", "Predicted absolute growth rate (AGR, log10 mg/mg/h)")
+
+plot(ggpredict(mod.lmer5, terms = c("Mo")))
 
 #4th instar
 plot.eff1<- plot(preds1) +
@@ -254,6 +263,16 @@ plot.eff4<- plot(preds4) +
   scale_color_viridis_d()+scale_fill_viridis_d()
 
 #5th instar
+plot.eff1.5<- plot(preds1.5) +
+  labs(
+    title  = "Interaction of temperature, mass, and year",
+    x      = "Temperature (°C)",
+    y      = ylabel,
+    colour = "Initial mass (mg)"   
+  )+
+  theme(axis.title = element_text(size = 14)) +
+  scale_color_viridis_d()+scale_fill_viridis_d()
+
 plot.eff5.5<- plot(preds5.5) +
   labs(
     title  = "Interaction of temperature, duration, and year",
@@ -343,10 +362,10 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
 pact<- read.csv("data/PastPresentActivityConstantTpc2024.csv")
 
 #restrict to high temps
-pact <- pact[pact$temp>35,]
+pact <- pact[pact$temp>29,]
 
 pact$year<- as.factor(pact$year)
-pact$temp<- as.factor(pact$temp)
+#pact$temp<- as.factor(pact$temp)
 pact$instar<- as.factor(pact$instar)
 
 #make active binary variable
@@ -371,20 +390,21 @@ active.p$yr_dur<- paste(active.p$year, active.p$dur_class)
 active.p$in.lab <- in.lab[match(active.p$instar, c(4,5))]
 
 #plot
-Fig4C_active.plot<- ggplot(active.p, aes( x = temp, y = prop_active, color = year, lty=factor(dur_class), group=yr_dur ))+
-  geom_point(size=3)+geom_line()+
+Fig4C_active.plot<- ggplot(active.p, aes( x = temp, y = prop_active, color = year, lty=factor(dur_class), group=yr_dur, size  = sqrt(n) ))+
+  geom_point(alpha=0.5) + geom_line(linewidth=1.25)+
   facet_wrap(in.lab~.)+
   scale_color_manual(values=cols2)+
+  scale_size_continuous(range = c(1, 4), guide = "none") + 
   theme_bw(base_size=16) +xlab("Temperature (°C)")+ylab("Proportion active")+
   theme(legend.position = "bottom")+
-  labs(lty="Duration (h)", color="Year")
+  labs(lty="Duration (h)", color="Year", size="none")
 
 #----
 #model
 pact$dur_class<- as.factor(pact$dur_class)
 
 mod.lmer <- glmer(
-  act_bin ~ temp * year + dur_class + instar + (1 | mom/ID),
+  act_bin ~ temp * year + instar + dur_class  + (1 | mom/ID),
   data = na.omit(pact),
   family = binomial
 )
@@ -589,13 +609,14 @@ if(grow.metric=="agr"){
 figpath <- ifelse(grow.metric=="rgr", "figures/FigS4_model4th.pdf", "figures/FigS6_model4th_agr.pdf")
 
 pdf(figpath,height = 10, width = 10)
-plot.eff1 +plot.eff2 +plot.eff3 +plot.eff4
+plot.eff1  / plot.eff2 +plot_layout(axis_titles = "collect")
 dev.off()
 
 figpath <- ifelse(grow.metric=="rgr", "figures/FigS5_model5th.pdf", "figures/FigS7_model5th_agr.pdf")
 
 pdf(figpath,height = 10, width = 10)
-plot.eff2.5 / (plot.eff5.5 +plot.eff4.5)
+plot.eff1.5 / plot.eff2.5 +plot_layout(axis_titles = "collect")
+#plot.eff2.5 / (plot.eff5.5 +plot.eff4.5)
 dev.off()
 
 #Supplementary mass gain plot
