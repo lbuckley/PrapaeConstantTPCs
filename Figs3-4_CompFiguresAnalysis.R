@@ -23,6 +23,9 @@ cols2<- colm[c(3,6)]
 # Load data
 tpc<- read.csv("data/PastPresentFilteredConstantTpc2024.csv")
 
+#select growth rate metric
+grow.metric<- "rgr" #"agr" "rgr"
+
 #-----
 #instar label
 in.lab<- c("4th instar", "5th instar")
@@ -67,9 +70,8 @@ tpc.plot$agr= tpc.plot$mgain/tpc.plot$time
 plot(tpc.plot$rgr, tpc.plot$agr)
 plot(tpc.plot$gr, tpc.plot$agr) #gr is absolute growth rate
 
-#select growth rate
-tpc.plot$grow= tpc.plot$rgrlog
-#tpc.plot$grow= tpc.plot$agr
+if(grow.metric=="rgr") tpc.plot$grow= tpc.plot$rgrlog
+if(grow.metric=="agr") tpc.plot$grow= tpc.plot$agr
 
 #family counts
 tpc.agg<- tpc.plot 
@@ -166,18 +168,20 @@ tpc.agg<- tpc.agg[which(tpc.agg$n>5),]
 tpc.agg.mass<- tpc.agg
 tpc.agg<- tpc.agg[which(!is.na(tpc.agg$hr.lab)),]
 
+ylabel<- ifelse(grow.metric=="rgr", "Relative growth rate (RGR, log10 mg/mg/h)", "Absolute growth rate (AGR, mg/h)")
+ylimits<- y_limits <- if (grow.metric == "rgr") {c(-0.015, 0.06)} else {c(-0.5, 8.5)}
+  
 #plotting temp means with error bars
 Fig4A_growth.plot= rgr.plot + 
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(data=tpc.agg, aes(x=temp, y = mean, fill=time.per), size=3, col="black", pch=21)+
   geom_line(data=tpc.agg, aes(x=temp, y = mean))+
   theme_bw(base_size=16)+
-  ylab("Relative growth rate (RGR, log10 mg/mg/h)")+ 
-  #ylab("Absolute growth rate (AGR, mg/h)")+
+  ylab(ylabel)+ 
   xlab("Temperature (°C)")+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
   labs(color="Year", fill="Year")+theme(legend.position="none")+
-  ylim(-0.015, 0.06)+
+  ylim(ylimits)+
   geom_hline(yintercept=0, col="darkgray")
 
 #add family lines
@@ -187,9 +191,9 @@ Fig4A_growth.plot= rgr.plot +
 
 #----
 #Model
-mod.lmer4 <- lme(gr ~ poly(temp,3)*time.per*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[tpc.plot$instar==4,]))
+mod.lmer4 <- lme(grow ~ poly(temp,3)*time.per*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[tpc.plot$instar==4,]))
 anova(mod.lmer4)
-mod.lmer5 <- lme(gr ~ poly(temp,3)*time.per*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[tpc.plot$instar==5,]))
+mod.lmer5 <- lme(grow ~ poly(temp,3)*time.per*time.class*Mo, random=~1|mom/ID, data = na.omit(tpc.plot[tpc.plot$instar==5,]))
 anova(mod.lmer5)
 
 sigma(mod.lmer4)
@@ -206,12 +210,14 @@ preds5.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "time.per"
 preds2.5 <- ggpredict(mod.lmer5, terms = c("temp [all]","time.class", "Mo"))
 preds4.5 <- ggpredict(mod.lmer5, terms = c("Mo [all]","time.per"))
 
+ylabel<- ifelse(grow.metric=="rgr", "Predicted relative growth rate (RGR, log10 mg/mg/h)", "Predicted absolute growth rate (AGR, log10 mg/mg/h)")
+
 #4th instar
 plot.eff1<- plot(preds1) +
   labs(
     title  = "Interaction of temperature, mass, and year",
     x      = "Temperature (°C)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Initial mass (mg)"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -221,7 +227,7 @@ plot.eff2<- plot(preds2) +
   labs(
     title  = "Interaction of temperature, mass, and duration",
     x      = "Temperature (°C)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Duration (h)"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -231,7 +237,7 @@ plot.eff3<- plot(preds3) +
   labs(
     title  = "Interaction of temperature and mass",
     x      = "Temperature (°C)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Initial mass (mg)"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -241,7 +247,7 @@ plot.eff4<- plot(preds4) +
   labs(
     title  = "Interaction of mass and year",
     x      = "Initial mass (mg)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Year"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -252,7 +258,7 @@ plot.eff5.5<- plot(preds5.5) +
   labs(
     title  = "Interaction of temperature, duration, and year",
     x      = "Temperature (°C)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Duration (h)"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -262,7 +268,7 @@ plot.eff2.5<- plot(preds2.5) +
   labs(
     title  = "Interaction of temperature, mass, and duration",
     x      = "Temperature (°C)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Duration (h)"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -272,7 +278,7 @@ plot.eff4.5<- plot(preds4.5) +
   labs(
     title  = "Interaction of mass and year",
     x      = "Initial mass (mg)",
-    y      = "Predicted relative growth rate (RGR, log10 mg/mg/h)",
+    y      = ylabel,
     colour = "Year"   
   )+
   theme(axis.title = element_text(size = 14)) +
@@ -291,10 +297,11 @@ tables2$F= round(tables2$F,1)
 tables2$p= round(tables2$p,4)
 
 #Table 2
-write.csv(tables2, "figures/Tables2_comp_growth.csv")
+tab.path<- ifelse(grow.metric=="rgr", "figures/Tables2_comp_growth.csv", "figures/TablesX_comp_growth_agr.csv")
+write.csv(tables2, tab.path)
 
 #compare across instars for text
-mod.lmer45 <- lme(gr ~ poly(temp,3)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
+mod.lmer45 <- lme(grow ~ poly(temp,3)*time.per*time.class*instar, random=~1|mom/ID, data = na.omit(tpc.plot))
 anova(mod.lmer45)
 
 #plot effects
@@ -303,17 +310,20 @@ preds <- ggpredict(mod.lmer45, terms = c("temp [all]", "time.per","instar"))
 plot(preds)
 
 #-------
+ylabel<- ifelse(grow.metric=="rgr", "RGR (log10 mg/mg/h)", "AGR (mg/h)")
+legpos<- ifelse(grow.metric=="rgr", "none", "bottom")
+
 #plot time periods together
 Fig4B_rgrtime.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(time.class))) +
   geom_errorbar(data=tpc.agg, aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   geom_point(size=2.5) + geom_line(linewidth=1.25)+
   facet_grid(.~ in.lab) +
   theme_bw(base_size=16)+xlab("Temperature (°C)")+
-  #ylab("RGR (log10 mg/mg/h)")+
-  ylab("AGR (mg/h)")+
+  ylab(ylabel)+
   scale_color_manual(values=cols2)+scale_fill_manual(values=colm[c(4,7)])+
-  labs(color="Year", fill="Year", lty="Time (hr)")+theme(legend.position="bottom")+
-  geom_hline(yintercept=0, col="darkgray")
+  labs(color="Year", lty="Duration (h)")+
+  geom_hline(yintercept=0, col="darkgray")+
+  theme(legend.position=legpos) 
 
 #plot 4th and 5th together
 rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=factor(instar))) +
@@ -327,7 +337,69 @@ rgr45.plot <- ggplot(tpc.agg, aes( x = temp, y = mean, color = time.per, lty=fac
 
 #plot_model(rgr45.plot, type = "pred", terms = c("grow_t6hour","Mo"))
 
-#-------
+#=============================
+#plot activity
+
+pact<- read.csv("data/PastPresentActivityConstantTpc2024.csv")
+
+#restrict to high temps
+pact <- pact[pact$temp>35,]
+
+pact$year<- as.factor(pact$year)
+pact$temp<- as.factor(pact$temp)
+pact$instar<- as.factor(pact$instar)
+
+#make active binary variable
+pact$act_bin<-NA
+pact$act_bin[pact$active=="n"]<-0
+pact$act_bin[pact$active=="y"]<-1
+
+#proportion active
+active.p <- pact[!is.na(pact$dur_class) & pact$dur_class>0,] %>%
+  group_by(temp, dur_class, instar, year) %>%
+  summarise(
+    act= sum(active == "y", na.rm = TRUE),
+    tot= sum(active == "y" | active == "n", na.rm = TRUE),
+    prop_active = act/tot,
+    n = n(),
+    .groups = "drop"
+  )
+
+active.p$yr_dur<- paste(active.p$year, active.p$dur_class) 
+
+#instar label
+active.p$in.lab <- in.lab[match(active.p$instar, c(4,5))]
+
+#plot
+Fig4C_active.plot<- ggplot(active.p, aes( x = temp, y = prop_active, color = year, lty=factor(dur_class), group=yr_dur ))+
+  geom_point(size=3)+geom_line()+
+  facet_wrap(in.lab~.)+
+  scale_color_manual(values=cols2)+
+  theme_bw(base_size=16) +xlab("Temperature (°C)")+ylab("Proportion active")+
+  theme(legend.position = "bottom")+
+  labs(lty="Duration (h)", color="Year")
+
+#----
+#model
+pact$dur_class<- as.factor(pact$dur_class)
+
+mod.lmer <- glmer(
+  act_bin ~ temp * year + dur_class + instar + (1 | mom/ID),
+  data = na.omit(pact),
+  family = binomial
+)
+summary(mod.lmer)
+
+#---
+library(emmeans)
+
+#marginal means
+emm_year_mixed <- emmeans(mod.lmer, ~ year, type = "response")
+
+#odds of activity
+pairs(emm_year_mixed)
+
+#===========================
 #Mass Plot 
 tpc.agg.mass$per.temp<- paste(tpc.agg.mass$time.per, tpc.agg.mass$temp, sep="_")
 #restrict time
@@ -335,11 +407,11 @@ tpc.agg.mass<- tpc.agg.mass[which(!is.na(tpc.agg.mass$time.class)),]
 #fix time 0 error bars
 tpc.agg.mass$se.mass[which(tpc.agg.mass$time.class==0)]<- 0
 
-FigS4_mass.plot= ggplot(data=tpc.agg.mass, aes(x=time.class, y = mean.mass, color=factor(temp), group=factor(per.temp), lty=time.per)) +
+FigS6_mass.plot= ggplot(data=tpc.agg.mass, aes(x=time.class, y = mean.mass, color=factor(temp), group=factor(per.temp), lty=time.per)) +
   geom_line(size=1.25)+
   geom_errorbar(data=tpc.agg.mass, aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   geom_point(size=3)+
-  theme_bw(base_size=16)+xlab("Time (h)")+ylab("Mass gain (mg)")+
+  theme_bw(base_size=16)+xlab("Duration (h)")+ylab("Mass gain (mg)")+
   scale_color_viridis_d(option="plasma")+
   labs(color="Temperature (°C)", lty="Year")+theme(legend.position="bottom")+
   facet_wrap(.~in.lab, scales="free_y") +xlim(0,24)
@@ -427,13 +499,12 @@ tpc_wide <- tpc_wide %>%
 #just intermediate temperatures
 tpc_wide<- tpc_wide[tpc_wide$temp %in% c(17, 23, 29, 35),]
 
-# [tpc_wide$instar==4,]
 Fig3B_plot.rgrmass_4th <- ggplot(tpc_wide[tpc_wide$instar==4,], aes( x = grow_t6hour, y = grow_t24hour, fill = Mo, color=time.per)) +
   geom_point(shape=21, alpha=0.4, size=3, stroke = 0.7) +
   #facet_grid(temp ~ ., scales="free_y") +
   scale_fill_viridis_c()+
   scale_color_manual(values=cols2)+
-  ylab("24 hour Growth rate") +xlab("6 hour Growth rate (mg/mg/h)")+
+  ylab("24h Relative growth rate") +xlab("6h Relative growth rate (mg/mg/h)")+
   theme_bw(base_size=16) + #theme(legend.position = c(0.7, 0.8))+
   labs(fill="Mass (mg)", color="Year")+ #+xlim(-0.01, 0.07)+ylim(-0.01, 0.07)
   geom_abline(color="darkgray") #+annotate("text", label = "4th instar", x = -0.002, y = 0.035)
@@ -443,7 +514,7 @@ Fig3B_plot.rgrmass_5th <- ggplot(tpc_wide[tpc_wide$instar==5,], aes( x = grow_t6
   #facet_grid(in.lab ~ ., scales="free_y") +
   scale_fill_viridis_c()+
   scale_color_manual(values=cols2)+
-  ylab("24 hour Growth rate") +xlab("6 hour Growth rate (mg/mg/h)")+
+  ylab("24h Relative growth rate") +xlab("6h Relative growth rate (mg/mg/h)")+
   theme_bw(base_size=16) + #theme(legend.position = c(0.7, 0.8))+
   labs(fill="Mass (mg)", color="Year")+ #+xlim(-0.01, 0.07)+ylim(-0.01, 0.07)
   geom_abline(color="darkgray")+ #+annotate("text", label = "5th instar", x = -0.005, y = 0.028)+
@@ -469,6 +540,8 @@ cor(tpc_wide[tpc_wide$instar==5,]$grow_t6hour, tpc_wide[tpc_wide$instar==5,]$gro
 design <- "AABB
             AACC"
 
+plot.path<- ifelse(grow.metric=="rgr", "figures/Fig1_relative_growth_rate.pdf", "figures/FigS1_absolute_growth_rate.pdf")
+
 pdf("figures/Fig3_mass.pdf",height = 8, width = 10)
 Fig3A_plot.mass +Fig3B_plot.rgrmass_4th +Fig3B_plot.rgrmass_5th+
   plot_layout(design=design)+plot_annotation(tag_levels = 'A')
@@ -478,27 +551,56 @@ design <- "AA
             AA
             AA
             AA
+            AA
             BB
+             BB
+             BB
+              CC
+              CC"
+
+if(grow.metric=="rgr"){
+pdf("figures/Fig4_relative_growthplot.pdf",height = 12, width = 7)
+print(
+Fig4A_growth.plot + Fig4B_rgrtime.plot + Fig4C_active.plot+
+  plot_layout(design=design)+plot_annotation(tag_levels = 'A') +plot_layout(axis_titles = "collect")
+)
+dev.off()
+}
+
+design <- "AA
+            AA
+            AA
+            AA
+            AA
+            BB
+             BB
              BB"
 
-pdf("figures/Fig4_relative_growthplot.pdf",height = 10, width = 7)
-#pdf("figures/FigS3_absolute_growthplot.pdf",height = 10, width = 7)
-Fig4A_growth.plot + Fig4B_rgrtime.plot +
-  plot_layout(design=design)+plot_annotation(tag_levels = 'A')
-dev.off()
+if(grow.metric=="agr"){
+  pdf("figures/FigS3_absolute_growthplot.pdf",height = 10, width = 7)
+  print(
+  Fig4A_growth.plot + Fig4B_rgrtime.plot +
+    plot_layout(design=design)+plot_annotation(tag_levels = 'A') +plot_layout(axis_titles = "collect")
+  )
+  dev.off()
+}
 
-#supplementary mass plot
-#pdf("figures/FigS4_masstime.pdf",height = 6, width = 8)
-#FigSx_mass.plot
-#dev.off()
+#supplementary effect plots
+figpath <- ifelse(grow.metric=="rgr", "figures/FigS4_model4th.pdf", "figures/FigS6_model4th_agr.pdf")
 
-#supplementary effect plot
-pdf("figures/FigSx_model4th.pdf",height = 10, width = 10)
+pdf(figpath,height = 10, width = 10)
 plot.eff1 +plot.eff2 +plot.eff3 +plot.eff4
 dev.off()
 
-pdf("figures/FigSx_model5th.pdf",height = 10, width = 10)
+figpath <- ifelse(grow.metric=="rgr", "figures/FigS5_model5th.pdf", "figures/FigS7_model5th_agr.pdf")
+
+pdf(figpath,height = 10, width = 10)
 plot.eff2.5 / (plot.eff5.5 +plot.eff4.5)
+dev.off()
+
+#Supplementary mass gain plot
+pdf("figures/FigS6_massgain.pdf",height = 7, width = 10)
+FigS6_mass.plot
 dev.off()
 
 #------------

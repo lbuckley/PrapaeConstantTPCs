@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "y"
+desktop<- "n"
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
@@ -182,6 +182,9 @@ tpc.p$dur_class[tpc.p$duration>12]<-24
 #### load in recent 2024  Constant TPC data
 tpc.c = read.csv("2024PrapaeConstantTPCCombineddata.csv", skip = 1)
 
+#fix 25 hour
+tpc.c$duration[tpc.c$duration==25]<-24
+
 # Paste mom and individual together to create UniID
 tpc.c <- tpc.c %>%
   mutate(UniID = paste(Female, Individual, sep = " "))
@@ -211,43 +214,5 @@ tpc <- rbind(tpc.cs, tpc.ps)
 tpc$active[which(tpc$active %in% c("yes","y?"))]<- "y"
 tpc$active[which(tpc$active %in% c("no","n?"))]<- "n"
 
-#restrict to high temps
-tpc <- tpc[tpc$temp>35,]
-
-#proportion active
-active.p <- tpc[!is.na(tpc$dur_class) & tpc$dur_class>0,] %>%
-  group_by(temp, dur_class, instar, year) %>%
-  summarise(
-    prop_active = mean(active == "y", na.rm = TRUE),
-    n = n(),
-    .groups = "drop"
-  )
-
-#plot
-ggplot(active.p, aes( x = temp, y = prop_active, color = year, shape=factor(dur_class)))+
-  geom_point()+geom_line()+
-  facet_wrap(instar~.)
-
-
-active.p[active.p$temp>35,]
-#40: 4: 73.3% for 6h and 53.3% for 24 h; 5: 52.4% for 24h
-#41: 4: 40.0% for 6h and 33.3% for 24 h; 5: 81.0% for 6h and 5.0% for 24 h
-
-
-active.c[active.c$temp>35,]
-
-
-#----
-LME MODEL
-
-library(lme4)
-
-m_glmer <- glmer(active_bin ~ time + (1 | Individual),
-                 data = dat_glm, family = binomial)
-
-summary(m_glmer)
-
-library(emmeans)
-emm_time_mixed <- emmeans(m_glmer, ~ time, type = "response")
-pairs(emm_time_mixed)
-
+#save data
+write.csv(tpc, "PastPresentActivityConstantTpc2024.csv")

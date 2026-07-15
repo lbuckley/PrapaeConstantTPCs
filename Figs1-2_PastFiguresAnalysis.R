@@ -26,6 +26,9 @@ cols2<- colm[c(3,6)]
 #load data
 tpc<- read.csv("data/PastPresentFilteredConstantTpc2024.csv")
 
+#select growth rate
+grow.metric<- "rgr" #"agr" "rgr"
+
 #==========================
 #INITIAL DATA
 
@@ -59,8 +62,8 @@ plot(tpc1$rgr, tpc1$agr)
 plot(tpc1$gr, tpc1$agr) #gr is absolute growth rate
   
 #specify metric
-tpc1$grow<- tpc1$rgrlog
-#tpc1$grow<- tpc1$agr
+if(grow.metric=="rgr") tpc1$grow= tpc1$rgrlog
+if(grow.metric=="agr") tpc1$grow= tpc1$agr
 
 #mean across time classes
 tpc.agg <- tpc1 %>%
@@ -99,7 +102,7 @@ Fig1_mass.plot.class<- ggplot(tpc.agg, aes(x = time.class, y = mean.mass, color 
   geom_errorbar(aes(x=time.class, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   facet_grid(. ~ in.lab) +
   theme_bw(base_size=18) +theme(legend.position = "bottom")+
-  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  xlab("Duration (h)")+ylab("Mass gain (mg)")+
   labs(color="Temperature (°C)")+scale_color_viridis_d(option="plasma")+scale_shape_manual(values=c(16,4))+
   guides(shape="none")
 #+coord_trans(y = "log")
@@ -110,7 +113,7 @@ Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class.num, y = mean.mass, color = 
   geom_errorbar(aes(x=time.class.num, y=mean.mass, ymin=mean.mass-se.mass, ymax=mean.mass+se.mass), width=0, col="black")+
   facet_grid(. ~ in.lab) +
   theme_bw(base_size=18) +theme(legend.position = "bottom")+
-  xlab("Time (hr)")+ylab("Mass gain (mg)")+
+  xlab("Duration (h)")+ylab("Mass gain (mg)")+
   labs(color="Temperature (°C)")+scale_color_viridis_d(option="plasma")+scale_shape_manual(values=c(16,4))+
   guides(shape="none")
 
@@ -118,15 +121,16 @@ Fig1_mass.plot<- ggplot(tpc.agg, aes(x = time.class.num, y = mean.mass, color = 
 tpc.agg<- tpc.agg[-which(tpc.agg$time.class==0),]
 
 #B. growth plot
+ylabel<- ifelse(grow.metric=="rgr", "Relative growth rate (log10 mg/mg/h)", "Absolute growth rate (mg/h)")
+
 Fig1_time.plot<- ggplot(tpc.agg, aes(x = temp, y = mean, color = time.class)) + 
   geom_point(size=2.7) + geom_line(linewidth = 1.3)+
   geom_errorbar(aes(x=temp, y=mean, ymin=mean-se, ymax=mean+se), width=0, col="black")+
   facet_grid(. ~ in.lab) +
   theme_bw(base_size=18) +theme(legend.position = "bottom")+
   xlab("Temperature (°C)")+
-  ylab("Relative growth rate (log10 mg/mg/hr)")+
-  #ylab("Absolute growth rate (mg/hr)")+
-  labs(color="Time (hr)")+scale_color_viridis_d()+
+  ylab(ylabel)+
+  labs(color="Duration (h)")+scale_color_viridis_d()+
   xlim(11,41)
 
 tpc.agg$time.class <- as.numeric(as.character(tpc.agg$time.class))
@@ -149,13 +153,13 @@ plot_model(mod, type = "pred", terms = c("time.class", "temp"), show.data=TRUE)
 #anova(mod.lmer)
 
 #growth rate by instar
-mod.lmer4 <- lme(gr ~ poly(temp,3)*time.n*Mo, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==4,]))
+mod.lmer4 <- lme(grow ~ poly(temp,3)*time.n*Mo, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==4,]))
 summary(mod.lmer4)
 anova(mod.lmer4)
 #4th: time.n            -0.00292623 0.000242389
 #5th: time.n            -0.00305272 0.000212852
 
-mod.lmer5 <- lme(gr ~ poly(temp,3)*time.n*Mo, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==5,]))
+mod.lmer5 <- lme(grow ~ poly(temp,3)*time.n*Mo, random=~1|mom/ID, data = na.omit(tpc1[tpc1$instar==5,]))
 
 sigma(mod.lmer4)
 sigma(mod.lmer5)
@@ -174,7 +178,8 @@ tables1$F= round(tables1$F,1)
 tables1$p= round(tables1$p,4)
 
 #Table 1
-#write.csv(tables1, "figures/Tables1_past_growth.csv")
+tab.path<- ifelse(grow.metric=="rgr", "figures/Tables1_past_growth.csv", "figures/TablesX_past_growth_agr.csv")
+write.csv(tables1, tab.path)
 
 #----------------
 
@@ -482,9 +487,10 @@ design <- "AA
             BB
              BB"
 
-#save figure 
-pdf("figures/Fig1_relative_growth_rate.pdf",height = 10, width = 9)
-#pdf("figures/FigS1_absolute_growth_rate.pdf",height = 10, width = 9)
+#save figure
+plot.path<- ifelse(grow.metric=="rgr", "figures/Fig1_relative_growth_rate.pdf", "figures/FigS1_absolute_growth_rate.pdf")
+
+pdf(plot.path,height = 10, width = 9)
 Fig1_mass.plot +Fig1_time.plot +plot_annotation(tag_levels = 'A')+ 
   plot_layout(ncol = 1)
 dev.off()
