@@ -24,6 +24,8 @@ cols2<- colm[c(3,6)]
 # Load data
 tpc<- read.csv("data/PastPresentFilteredConstantTpc2024.csv")
 
+#tpc<- read.csv("data/PastPresentFilteredConstantTpc2026.csv")
+ 
 #select growth rate metric
 grow.metric<- "rgr" #"agr" "rgr"
 

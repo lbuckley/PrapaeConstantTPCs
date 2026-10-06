@@ -22,7 +22,7 @@ cols<- colm[c(2,4,7)]
 cols2<- colm[c(3,6)]
 
 #toggle between desktop (y) and laptop (n)
-desktop<- "n"
+desktop<- "y"
 
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/Data/")
@@ -99,6 +99,9 @@ tpc.c <- tpc.c %>%
 #CHECK current times that deviate from 6 and 24 hrs
 tpc.c[which(tpc.c$duration>30),]
 
+#fix entries that aren't in 24 hours time
+tpc.c[which(tpc.c$duration< -5 & tpc.c$duration> -7),"duration"]<- tpc.c[which(tpc.c$duration< -5 & tpc.c$duration> -7),"duration"]+12
+
 # Make sure that new data follows naming of old data sets
 tpc.c$mom= tpc.c$Female
 tpc.c$ID= tpc.c$Individual
@@ -152,7 +155,7 @@ tpc$gr= tpc$mgain/tpc$time
 if(desktop=="y") setwd("/Users/laurenbuckley/Google Drive/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
 if(desktop=="n") setwd("/Users/lbuckley/Library/CloudStorage/GoogleDrive-lbuckley@uw.edu/My Drive/Buckley/Work/WARP/projects/TPCconstant/out/")
 
-write.csv(tpc, "PastPresentFilteredConstantTpc2024.csv")
+write.csv(tpc, "PastPresentFilteredConstantTpc2026.csv")
 
 #---------------------
 #assess survival and active
@@ -201,8 +204,8 @@ tpc.c$year<-"2024"
 tpc.c$dur_class<- tpc.c$duration
 
 #combine historic and current
-tpc.ps= tpc.p[,c("UniID","mom","ID","temp", "active","instar","dur_class","Mo","year")]
-tpc.cs= tpc.c[,c("UniID","mom","ID","temp", "active","instar","dur_class","Mo","year")]
+tpc.ps= tpc.p[,c("UniID","mom","ID","temp", "active","instar","dur_class","Mo","year","time","fw")]
+tpc.cs= tpc.c[,c("UniID","mom","ID","temp", "active","instar","dur_class","Mo","year","time","fw")]
 
 # Ensure data types match for both datasets before combining
 tpc.ps$mom <- as.character(tpc.ps$mom)
@@ -215,4 +218,4 @@ tpc$active[which(tpc$active %in% c("yes","y?"))]<- "y"
 tpc$active[which(tpc$active %in% c("no","n?"))]<- "n"
 
 #save data
-write.csv(tpc, "PastPresentActivityConstantTpc2024.csv")
+write.csv(tpc, "PastPresentActivityConstantTpc2026.csv")
